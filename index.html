@@ -151,6 +151,11 @@ table.grid tbody tr:hover td:not(.calc):not(.wk){background:var(--surface-2)}
 td.inrange{background:var(--accent-soft)!important}
 td.active{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:6;background:var(--surface)!important}
 td.spacer{border:0;padding:0;background:var(--surface)}
+/* Boş ızgara yönlendirmesi yatay kaydırmadan etkilenmesin diye sola sabitlenir. */
+.emptybox{position:sticky;left:0;width:min(640px,90vw);padding:26px 18px 30px;white-space:normal;
+  font-family:"IBM Plex Sans",sans-serif;text-align:left}
+.emptybox b{display:block;font-size:15px;font-weight:600;margin-bottom:6px}
+.emptybox p{margin:0 0 6px;font-size:13px;color:var(--muted);line-height:1.5}
 input.cellin{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0 6px;background:var(--surface);
   font:inherit;font-family:"IBM Plex Mono",monospace;text-align:inherit;outline:2px solid var(--accent);outline-offset:-2px}
 td.editing{position:relative;padding:0}
@@ -355,7 +360,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "20";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "21";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -735,10 +740,18 @@ function renderBody(){
   if(end<=start) end=Math.min(total,start+1);
   tb.innerHTML="";
   if(!total){
-    const msg = S.orders.length ? "Bu filtreye uyan iş emri yok."
-      : "Henüz iş emri yok. Üstteki “Yeni iş emri” ile ilk satırı ekle; stok kodunu girince ürün bilgileri Ürün Listesi'nden dolar.";
-    const tr=el("tr"), tdx=el("td","spacer",msg); tdx.colSpan=cols.length;
-    tdx.style.padding="30px"; tdx.style.textAlign="center"; tdx.style.color="var(--muted)";
+    const tr=el("tr"), tdx=el("td","spacer"); tdx.colSpan=cols.length;
+    const box=el("div","emptybox");
+    if(S.orders.length){
+      box.appendChild(el("b",null,"Bu filtreye uyan iş emri yok."));
+      box.appendChild(el("p",null,"Üstteki arama kutusunu, makine ve durum seçimlerini temizleyip yeniden dene."));
+    } else {
+      box.appendChild(el("b",null,"Henüz iş emri yok."));
+      const p1=el("p",null,"“Yeni iş emri” ile ilk satırı ekle. Stok kodunu ya da ürün adını yazınca çevrim süresi ve kalıp göz sayısı Ürün Listesi'nden kendiliğinden dolar.");
+      const p2=el("p",null,"Elinde eski bir kayıt varsa “Yedek” düğmesinden metni yapıştırıp yükleyebilirsin.");
+      box.appendChild(p1); box.appendChild(p2);
+    }
+    tdx.appendChild(box);
     tr.appendChild(tdx); tb.appendChild(tr); $("#cellInfo").textContent=""; return;
   }
   const frag=document.createDocumentFragment();
