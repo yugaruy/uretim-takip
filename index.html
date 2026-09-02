@@ -355,7 +355,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "19";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "20";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -622,6 +622,8 @@ function monthList(){
   const dm=dataMonths();
   let lo=t, hi=t;
   dm.forEach(m=>{ if(m<lo) lo=m; if(m>hi) hi=m; });
+  const geri=shiftMonth(t,-12);          // boş kayıtta bile bir yıl geriye giriş yapılabilsin
+  if(geri<lo) lo=geri;
   if(SEED.basla.slice(0,7)<lo) lo=SEED.basla.slice(0,7);
   if(monthKey && monthKey<lo) lo=monthKey;
   let end=shiftMonth(hi>t?hi:t, 24);
