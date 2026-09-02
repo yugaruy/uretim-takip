@@ -198,6 +198,7 @@ td.editing{position:relative;padding:0}
     </nav>
     <div class="top-right">
       <span class="saved" id="savedAt"></span>
+      <button class="btn sm" id="btnXlsx" hidden>Excel dosyası indir</button>
       <button class="btn sm" id="btnCopyExcel">Excel'e kopyala</button>
       <button class="btn sm" id="btnBackup">Yedek</button>
       <button class="btn sm danger" id="btnClear">Boşalt</button>
@@ -354,7 +355,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "18";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "19";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1471,6 +1472,86 @@ async function toClipboard(text,okMsg){
   catch(e){ toast("Panoya kopyalanamadı, metni elle seçip kopyala"); return false; }
 }
 $("#btnCopyExcel").addEventListener("click",()=>toClipboard(table("\t"), fmt(S.orders.length)+" iş emri panoya kopyalandı, Excel'e yapıştır"));
+
+/* Excel dosyası: dört sayfa — iş emirleri, günlük üretim dökümü, ürün ve makine listeleri.
+   Yalnızca dosya indirmenin çalıştığı ortamda görünür (claude.ai kopyasında indirme engelli). */
+function xlsxAvailable(){ return typeof XLSX!=="undefined" && !window.claude; }
+function sheetOrders(){
+  const rows=[["İş Emri","Stok Kodu","Ürün","Makine","Çevrim Süresi (sn)","Gerçekleşen Çevrim (sn)",
+    "Kalıp Göz Sayısı","Çalışan Göz Sayısı","Planlanan Üretim","Gerçekleşen Üretim","Gerçekleşme %",
+    "Planlanan Çalışma Saati","Gerçekleşen Çalışma","Sapma Oranı %","Fazla Çalışma","Arıza / Duruş",
+    "Teorik Saatlik Kapasite","Gerçekleşen Saatlik","Teorik Vardiya (8 sa)","Teorik 24 Saatlik","Gerçekleşen 24 Saatlik",
+    "Hatalı Üretim","Hammadde Firesi (kg)","Son Üretim"]];
+  S.orders.forEach(o=>{ const c=calc(o);
+    rows.push([o.ie||"",o.kod||"",o.urun||"",machineLabel(o.makine),n0(o.cevrim),n0(o.gcevrim),
+      n0(o.kgoz),n0(o.cgoz),n0(o.plan),c.J,r2(c.pct*100),r2(c.K),r2(c.L),r2(c.M*100),r2(c.N),n0(o.durus),
+      r2(c.P),r2(c.Q),r2(c.vardiya),r2(c.R),r2(c.S),n0(o.hatali),r2(c.V),xlDate(c.son)]);
+  });
+  return rows;
+}
+function sheetDays(){
+  const rows=[["Tarih","Gün","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Vardiya Dökümü","Saat Karşılığı"]];
+  const all=[];
+  S.orders.forEach(o=>{ const c=calc(o);
+    for(const k in o.days){ const v=n0(o.days[k]); if(v) all.push([k,o,v,c]); }
+  });
+  all.sort((a,b)=> a[0]<b[0]?-1:a[0]>b[0]?1:(a[1].ie||"").localeCompare(b[1].ie||"","tr"));
+  all.forEach(([k,o,v,c])=>rows.push([xlDate(k),gunAdi(k),o.ie||"",o.kod||"",o.urun||"",machineLabel(o.makine),
+    v,dayExp(o,k),c.Q?r2(v/c.Q):""]));
+  return rows;
+}
+function sheetProducts(){
+  const rows=[["Stok Kodu","Tanımı","Çevrim (sn)","Kalıp Göz Sayısı","Birim Gramaj (g)","Brüt Gramaj (g)",
+    "Saatlik Üretim","Vardiya (8 sa)","Günlük (24 sa)"]];
+  S.products.forEach(p=>{ const v=verim(p);
+    rows.push([p.kod||"",p.ad||"",n0(p.cevrim),n0(p.goz),p.net==null?"":n0(p.net),p.gramaj==null?"":n0(p.gramaj),
+      r2(v.saat),r2(v.vardiya),r2(v.gun)]);
+  });
+  return rows;
+}
+function sheetMachines(){
+  const use={}; S.orders.forEach(o=>{ if(o.makine) use[o.makine]=(use[o.makine]||0)+1; });
+  const rows=[["Makine Kodu","Makine Adı","Tipi","İş Emri Sayısı"]];
+  S.machines.forEach(m=>rows.push([m.kod||"",m.ad||"",m.tip||"",use[m.kod]||0]));
+  return rows;
+}
+function r2(x){ x=n0(x); return Math.round(x*100)/100; }
+function autoWidth(rows){
+  const w=[];
+  rows.forEach(r=>r.forEach((c,i)=>{
+    const len=String(c==null?"":c).length;
+    if(!w[i]||len>w[i]) w[i]=len;
+  }));
+  return w.map(n=>({wch:Math.min(Math.max(n+2,9),42)}));
+}
+/* Excel'in tarih sayısı: 1899-12-30'dan itibaren geçen gün. */
+function xlDate(iso){ return iso ? Math.round(parseISO(iso).getTime()/86400000)+25569 : ""; }
+function addSheet(wb,name,rows,dateCols){
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=autoWidth(rows);
+  ws["!freeze"]={xSplit:0,ySplit:1};
+  (dateCols||[]).forEach(ci=>{
+    for(let r=1;r<rows.length;r++){
+      const ref=XLSX.utils.encode_cell({c:ci,r:r}), cell=ws[ref];
+      if(cell && typeof cell.v==="number"){ cell.t="n"; cell.z="dd.mm.yyyy"; }
+    }
+  });
+  XLSX.utils.book_append_sheet(wb,ws,name);
+}
+$("#btnXlsx").addEventListener("click",()=>{
+  if(!xlsxAvailable()){ toast("Bu ekranda dosya indirilemiyor, “Excel'e kopyala” kullan"); return; }
+  try{
+    const wb=XLSX.utils.book_new();
+    addSheet(wb,"İş Emirleri",sheetOrders(),[23]);
+    addSheet(wb,"Günlük Üretim",sheetDays(),[0]);
+    addSheet(wb,"Ürün Listesi",sheetProducts());
+    addSheet(wb,"Makineler",sheetMachines());
+    const t=parseISO(todayISO());
+    const ad="Üretim Takip "+String(t.getUTCDate()).padStart(2,"0")+"-"+String(t.getUTCMonth()+1).padStart(2,"0")+"-"+t.getUTCFullYear()+".xlsx";
+    XLSX.writeFile(wb,ad);
+    toast("Excel dosyası indirildi");
+  }catch(e){ toast("Excel dosyası oluşturulamadı"); }
+});
 function backupJSON(){
   return JSON.stringify({
     orders:S.orders.map(o=>{const c=Object.assign({},o); delete c._id; return c;}),
@@ -1565,6 +1646,13 @@ $("#dDate").value = SEED.bitis;
 $("#dDate").min = "2020-01-01";
 const _fr=fullRange(); $("#sFrom").value=_fr.from; $("#sTo").value=_fr.to;
 $("#buildTag").textContent="· sürüm "+BUILD+" · 2 Eylül 2026";
+/* Excel kitaplığı yalnızca dosya indirmenin çalıştığı ortamda ve yalnızca bir kez yüklenir. */
+if(!window.claude){
+  const _sc=document.createElement("script");
+  _sc.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  _sc.onload=function(){ $("#btnXlsx").hidden=false; };
+  document.head.appendChild(_sc);
+}
 setView("orders");
 boot();
 /* Sayfa gece boyunca açık kalırsa tarih kendiliğinden devreder. */
