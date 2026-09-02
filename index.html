@@ -360,7 +360,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "21";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "22";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -408,9 +408,12 @@ function loadLocal(){
     const raw=localStorage.getItem(KEY);
     if(raw){
       const p=JSON.parse(raw);
-      if(p&&p.orders&&p.orders.length){
-        if(!p.machines||!p.machines.length) p.machines=MACHINES.map((m,i)=>Object.assign({_id:"m"+String(i).padStart(2,"0")},m));
-        if(!p.products) p.products=[];
+      if(p && (Array.isArray(p.orders)||Array.isArray(p.products)||Array.isArray(p.machines))){
+        if(!Array.isArray(p.orders)) p.orders=[];
+        if(!Array.isArray(p.machines)) p.machines=MACHINES.map((m,i)=>Object.assign({_id:"m"+String(i).padStart(2,"0")},m));
+        if(!Array.isArray(p.products)) p.products=[];
+        p.products.forEach(x=>{ if(!x._id) x._id=newId(); });
+        p.machines.forEach(x=>{ if(!x._id) x._id=newId(); });
         p.orders.forEach(o=>{
           if(!o._id) o._id=newId();
           if(!o.days) o.days={};
@@ -423,14 +426,19 @@ function loadLocal(){
   }catch(e){}
   return null;
 }
-const persistLocal=debounce(function(){
+function writeLocal(){
   try{
     localStorage.setItem(KEY, JSON.stringify({orders:S.orders,products:S.products,machines:S.machines,
       pver:S.pver||SEED_VER, savedAt:new Date().toISOString()}));
-    if(statusNote==="Kaydedilemedi") statusNote="";
-  }catch(e){ statusNote="Kaydedilemedi: tarayıcı deposu dolu"; }
-  paintStatus();
-},250);
+    if(statusNote.indexOf("Kaydedilemedi")===0) statusNote="";
+    return true;
+  }catch(e){ statusNote="Kaydedilemedi: tarayıcı deposu dolu"; return false; }
+}
+const persistLocal=debounce(function(){ writeLocal(); paintStatus(); },250);
+/* Sekme kapanırken ya da arka plana alınırken bekleyen yazma kaybolmasın. */
+window.addEventListener("pagehide",writeLocal);
+window.addEventListener("beforeunload",writeLocal);
+document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="hidden") writeLocal(); });
 
 function newId(){ return "z"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function saveOrder(){ persistLocal(); }
