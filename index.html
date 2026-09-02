@@ -1,0 +1,1578 @@
+<title>Üretim Takip</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#eaeef2; --surface:#ffffff; --surface-2:#f4f7f9; --line:#d2dae1; --line-soft:#e3e9ee;
+  --ink:#101519; --ink-2:#3d4d59; --muted:#67788a;
+  --accent:#0d6b83; --accent-ink:#ffffff; --accent-soft:#dcecf1; --accent-line:#a9cfda;
+  --ok:#1d7350; --ok-soft:#dcefe6; --warn:#9c5c0d; --warn-soft:#f7ebda; --crit:#9e2f2f; --crit-soft:#f6e0e0;
+  --bar:#0d6b83; --bar-soft:#bcd9e1;
+  --shadow:0 1px 2px rgba(16,21,25,.06),0 8px 24px rgba(16,21,25,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0d1216; --surface:#151b21; --surface-2:#1b232a; --line:#2a343d; --line-soft:#222b33;
+    --ink:#e3e9ef; --ink-2:#bac6d0; --muted:#8697a4;
+    --accent:#41a6c1; --accent-ink:#08171c; --accent-soft:#17323b; --accent-line:#2b5a68;
+    --ok:#4fb488; --ok-soft:#14301f; --warn:#d69141; --warn-soft:#33240f; --crit:#dd7070; --crit-soft:#341818;
+    --bar:#41a6c1; --bar-soft:#1f3c46;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0d1216; --surface:#151b21; --surface-2:#1b232a; --line:#2a343d; --line-soft:#222b33;
+  --ink:#e3e9ef; --ink-2:#bac6d0; --muted:#8697a4;
+  --accent:#41a6c1; --accent-ink:#08171c; --accent-soft:#17323b; --accent-line:#2b5a68;
+  --ok:#4fb488; --ok-soft:#14301f; --warn:#d69141; --warn-soft:#33240f; --crit:#dd7070; --crit-soft:#341818;
+  --bar:#41a6c1; --bar-soft:#1f3c46;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.45;}
+h1,h2,h3,th,.eyebrow,button,.tab{font-family:Archivo,"IBM Plex Sans",sans-serif}
+.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ---------- shell ---------- */
+header.top{position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--line);}
+.top-in{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 18px;}
+.brand{display:flex;flex-direction:column;gap:1px;margin-right:4px}
+.brand b{font:600 16px/1.1 Archivo,sans-serif;letter-spacing:-.01em}
+.brand span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+nav.tabs{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:7px;padding:3px}
+.tab{border:0;background:transparent;color:var(--ink-2);padding:6px 13px;border-radius:5px;font-weight:600;font-size:13px;cursor:pointer}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.saved{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.btn:hover{border-color:var(--accent-line);background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--crit);border-color:var(--line)}
+.btn.danger:hover{background:var(--crit-soft);border-color:var(--crit)}
+.btn.sm{padding:3px 9px;font-size:12px}
+main{padding:18px;max-width:1500px;margin:0 auto}
+.view[hidden]{display:none}
+
+/* ---------- controls ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+input[type=text],input[type=search],input[type=number],input[type=date],select{
+  background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 9px;min-width:0}
+input[type=search]{min-width:230px}
+label.field{display:flex;flex-direction:column;gap:4px}
+label.field>span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;font-family:Archivo,sans-serif}
+.spacer{flex:1}
+.count{font-size:12.5px;color:var(--muted)}
+
+/* ---------- table ---------- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:2}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--ink)}
+th .dir{color:var(--accent)}
+td{padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr.clickable{cursor:pointer}
+td.r,th.r{text-align:right}
+.mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.strong{font-weight:600}
+.sub{display:block;font-size:11.5px;color:var(--muted)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+
+/* ---------- bits ---------- */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.idle{background:var(--surface-2);color:var(--muted)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.meter{display:flex;align-items:center;gap:8px;min-width:130px}
+.meter .track{flex:1;height:6px;border-radius:3px;background:var(--bar-soft);overflow:hidden}
+.meter .fill{height:100%;background:var(--bar);border-radius:3px}
+
+/* ---------- kpi ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow)}
+.kpi .eyebrow{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .val{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:25px;font-weight:600;letter-spacing:-.02em;margin-top:5px;line-height:1.1}
+.kpi .foot{font-size:12px;color:var(--muted);margin-top:3px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:1100px){.grid2{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}}
+.panel-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:13px 15px;border-bottom:1px solid var(--line)}
+.panel-head h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em}
+.panel-head p{margin:0;font-size:12px;color:var(--muted)}
+.panel-body{padding:15px}
+
+/* ---------- chart ---------- */
+.chart-wrap{position:relative}
+svg.chart{display:block;width:100%;height:auto;aspect-ratio:1000/210;overflow:visible}
+svg.chart .grid{stroke:var(--line-soft);stroke-width:1}
+svg.chart .axis{fill:var(--muted);font-size:9.5px;font-family:"IBM Plex Mono",monospace}
+svg.chart rect.bar{fill:var(--bar);rx:2}
+svg.chart rect.hit{fill:transparent;cursor:pointer}
+svg.chart g.col:hover rect.bar{fill:var(--ink)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:7px;
+  box-shadow:var(--shadow);padding:7px 10px;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5}
+.tip b{font-family:"IBM Plex Mono",monospace}
+details.tbl{margin-top:12px}
+details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight:600}
+details.tbl summary:hover{color:var(--ink)}
+
+/* ---------- grid ---------- */
+.grid-scroll{position:relative;overflow:auto;max-height:calc(100vh - 200px);background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);outline:none}
+table.grid{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:12.5px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+table.grid th,table.grid td{height:30px;padding:0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);background:var(--surface)}
+table.grid thead th{position:sticky;top:0;z-index:3;background:var(--surface-2);color:var(--muted);
+  font-family:Archivo,sans-serif;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;
+  text-align:left;cursor:pointer;user-select:none;white-space:normal;line-height:1.15;padding:4px 7px;vertical-align:bottom}
+table.grid thead th:hover{color:var(--ink)}
+table.grid thead th .dir{color:var(--accent)}
+table.grid th.frz,table.grid td.frz{position:sticky;z-index:2}
+table.grid thead th.frz{z-index:5}
+table.grid th.frz::after,table.grid td.frz::after{content:"";position:absolute;top:0;right:-1px;bottom:0;width:1px;background:var(--line)}
+table.grid th.last-frz::after,table.grid td.last-frz::after{box-shadow:3px 0 6px -2px rgba(16,21,25,.22)}
+@media(max-width:1000px){table.grid th.hide-frz,table.grid td.hide-frz{position:static}}
+td.calc{background:var(--surface-2);color:var(--ink-2)}
+td.wk{background:var(--accent-soft);color:var(--ink-2)}
+td.num-c{text-align:right}
+td.dev-warn{color:var(--warn)} td.dev-crit{color:var(--crit);font-weight:600}
+td.wknd{background:var(--surface-2)}
+table.grid tbody tr:hover td:not(.calc):not(.wk){background:var(--surface-2)}
+td.inrange{background:var(--accent-soft)!important}
+td.active{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:6;background:var(--surface)!important}
+td.spacer{border:0;padding:0;background:var(--surface)}
+input.cellin{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0 6px;background:var(--surface);
+  font:inherit;font-family:"IBM Plex Mono",monospace;text-align:inherit;outline:2px solid var(--accent);outline-offset:-2px}
+td.editing{position:relative;padding:0}
+.gridbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;font-size:12.5px;color:var(--muted)}
+.gridbar b{color:var(--ink);font-family:"IBM Plex Mono",monospace}
+.gridbar kbd{font-family:"IBM Plex Mono",monospace;font-size:11px;border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:4px;padding:0 4px;background:var(--surface);color:var(--ink-2)}
+.combo{position:fixed;z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:9px;
+  box-shadow:var(--shadow);max-height:290px;overflow-y:auto;padding:4px;font-family:"IBM Plex Sans",sans-serif;font-size:13px}
+.combo .ci{display:flex;align-items:baseline;gap:9px;padding:6px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.combo .ci[aria-selected="true"]{background:var(--accent-soft)}
+.combo .ci .ad{font-weight:600}
+.combo .ci .tip{color:var(--ink-2);font-family:"IBM Plex Mono",monospace;font-size:12px}
+.combo .ci .kod{margin-left:auto;padding-left:14px;color:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+.combo mark{background:none;color:var(--accent);font-weight:700}
+.combo .none{padding:11px;color:var(--muted)}
+.combo .head{padding:5px 9px 6px;color:var(--muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+  font-family:Archivo,sans-serif;font-weight:600;border-bottom:1px solid var(--line-soft);margin-bottom:3px}
+.panelbox{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
+  padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
+.panelbox h3{margin:0;font-size:14px;font-weight:600}
+.panelbox textarea{width:100%;min-height:140px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  border:1px solid var(--line);border-radius:7px;padding:8px;background:var(--surface-2);color:var(--ink);resize:vertical}
+.panelbox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.month-nav{display:flex;align-items:center;gap:4px}
+.month-nav select{min-width:118px}
+.hint{font-size:12px;color:var(--muted)}
+.confirm{display:flex;align-items:center;gap:10px;background:var(--warn-soft);border:1px solid var(--warn);
+  color:var(--warn);border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:12px}
+.confirm .spacer{flex:1}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--ground);
+  padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.18s;z-index:60}
+.toast.on{opacity:1;transform:translateX(-50%)}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><b>Üretim Takip</b><span id="brandSpan">2025 planlama</span></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="orders" aria-selected="true">İş Emirleri</button>
+      <button class="tab" role="tab" data-view="daily" aria-selected="false">Günlük Giriş</button>
+      <button class="tab" role="tab" data-view="summary" aria-selected="false">Özet</button>
+      <button class="tab" role="tab" data-view="products" aria-selected="false">Ürün Listesi</button>
+      <button class="tab" role="tab" data-view="machines" aria-selected="false">Makineler</button>
+    </nav>
+    <div class="top-right">
+      <span class="saved" id="savedAt"></span>
+      <button class="btn sm" id="btnCopyExcel">Excel'e kopyala</button>
+      <button class="btn sm" id="btnBackup">Yedek</button>
+      <button class="btn sm danger" id="btnClear">Boşalt</button>
+      <button class="btn sm danger" id="btnReset">Sıfırla</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="confirmBar"></div>
+  <div id="backupBox" hidden></div>
+
+  <!-- ORDERS -->
+  <section class="view" id="view-orders">
+    <div class="toolbar">
+      <input type="search" id="oSearch" placeholder="İş emri, stok kodu veya ürün ara">
+      <select id="oMachine"><option value="">Tüm makineler</option></select>
+      <select id="oStatus">
+        <option value="">Tüm durumlar</option>
+        <option value="devam">Devam eden</option>
+        <option value="tamam">Tamamlanan</option>
+        <option value="bos">Üretim girilmemiş</option>
+      </select>
+      <span class="month-nav">
+        <button class="btn sm" id="mPrev" aria-label="Önceki ay">‹</button>
+        <select id="mSel"></select>
+        <button class="btn sm" id="mNext" aria-label="Sonraki ay">›</button>
+        <button class="btn sm" id="mNow">Bu ay</button>
+      </span>
+      <span class="spacer"></span>
+      <span class="count" id="oCount"></span>
+      <button class="btn sm" id="btnDelRow">Satırı sil</button>
+      <button class="btn sm danger" id="btnClear2">Boşalt</button>
+      <button class="btn primary" id="btnNew">Yeni iş emri</button>
+    </div>
+    <div class="grid-scroll" id="gridScroll" tabindex="0" role="grid" aria-label="2025 iş emirleri">
+      <table class="grid" id="grid">
+        <colgroup id="gridCols"></colgroup>
+        <thead><tr id="gridHead"></tr></thead>
+        <tbody id="gridBody"></tbody>
+      </table>
+    </div>
+    <div class="gridbar">
+      <span id="cellInfo"></span>
+      <span id="buildTag"></span>
+      <span class="spacer"></span>
+      <span><kbd>Enter</kbd> düzenle · <kbd>Tab</kbd> yana · <kbd>Ctrl</kbd>+<kbd>C</kbd> kopyala · <kbd>Ctrl</kbd>+<kbd>V</kbd> yapıştır · <kbd>Ctrl</kbd>+<kbd>D</kbd> aşağı doldur · <kbd>Del</kbd> temizle</span>
+    </div>
+  </section>
+
+  <!-- DAILY -->
+  <section class="view" id="view-daily" hidden>
+    <div class="toolbar">
+      <button class="btn sm" id="dPrev">‹ Önceki gün</button>
+      <input type="date" id="dDate">
+      <button class="btn sm" id="dNext">Sonraki gün ›</button>
+      <button class="btn sm" id="dToday">Bugün</button>
+      <select id="dMachine"><option value="">Tüm makineler</option></select>
+      <input type="search" id="dSearch" placeholder="İş emri veya ürün ara">
+      <label class="field" style="flex-direction:row;align-items:center;gap:6px">
+        <input type="checkbox" id="dAll"><span style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink-2)">Tüm iş emirlerini göster</span>
+      </label>
+      <span class="spacer"></span>
+      <span class="count" id="dCount"></span>
+    </div>
+    <div class="kpis" id="dKpis"></div>
+    <div class="panel"><div class="scroll"><table>
+      <thead><tr>
+        <th>İş Emri</th><th>Ürün</th><th>Makine</th><th class="r">Bu gün üretilen</th>
+        <th class="r">Saat karşılığı</th><th class="r">Toplam gerçekleşen</th><th>Gerçekleşme</th>
+      </tr></thead>
+      <tbody id="dBody"></tbody>
+    </table></div></div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="view" id="view-summary" hidden>
+    <div class="toolbar">
+      <label class="field"><span>Başlangıç</span><input type="date" id="sFrom"></label>
+      <label class="field"><span>Bitiş</span><input type="date" id="sTo"></label>
+      <button class="btn sm" id="sAll">Tüm dönem</button>
+      <span class="spacer"></span>
+      <span class="count" id="sRange"></span>
+    </div>
+    <div class="kpis" id="sKpis"></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-head"><h2>Haftalık üretim</h2><p>Seçili dönemdeki toplam adet</p></div>
+        <div class="panel-body">
+          <div class="chart-wrap" id="wkWrap"><svg class="chart" id="wkChart" role="img" aria-label="Haftalık toplam üretim"></svg><div class="tip" id="wkTip"></div></div>
+          <details class="tbl"><summary>Tablo olarak göster</summary><div class="scroll" id="wkTable"></div></details>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Makine yükü</h2><p>Gerçekleşen çalışma saati</p></div>
+        <div class="scroll"><table>
+          <thead><tr><th>Makine</th><th class="r">İş emri</th><th class="r">Üretim</th><th class="r">Çalışma sa.</th><th>Yük</th><th class="r">Ort. sapma</th></tr></thead>
+          <tbody id="mBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-head"><h2>Ürün bazında üretim</h2><p>Seçili dönemde en çok üretilen 15 ürün</p></div>
+      <div class="scroll"><table>
+        <thead><tr><th>Stok Kodu</th><th>Ürün</th><th class="r">İş emri</th><th class="r">Üretim</th><th>Pay</th><th class="r">Fire kg</th></tr></thead>
+        <tbody id="pBody"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- PRODUCTS -->
+  <section class="view" id="view-products" hidden>
+    <div class="toolbar">
+      <input type="search" id="prSearch" placeholder="Stok kodu veya ürün adı ara">
+      <span class="spacer"></span>
+      <span class="count" id="prCount"></span>
+      <button class="btn sm" id="btnSyncProducts">Listeyi dosyadan yenile</button>
+      <button class="btn primary" id="btnNewProduct">Yeni ürün</button>
+    </div>
+    <div class="panel"><div class="scroll"><table>
+      <thead><tr><th>Stok Kodu</th><th>Tanımı</th><th class="r">Çevrim (sn)</th><th class="r">Kalıp Göz Sayısı</th>
+        <th class="r">Birim Gramaj (g)</th><th class="r">Brüt Gramaj (g)</th>
+        <th class="r">Saatlik Üretim</th><th class="r">Vardiya (8 sa)</th><th class="r">Günlük (24 sa)</th>
+        <th class="r">İş emri</th><th></th></tr></thead>
+      <tbody id="prBody"></tbody>
+    </table></div></div>
+    <p class="hint" style="margin-top:10px">Bu liste iş emri girişinde referans olarak kullanılır: stok kodunu seçtiğinde ürün adı, çevrim süresi ve kalıp göz sayısı buradan dolar, hammadde firesi brüt gramajla hesaplanır.<br>
+    Sağdaki üç sütun hesaplanır, yazılamaz: <b>Saatlik Üretim</b> = 3600 / çevrim × kalıp göz sayısı, <b>Vardiya</b> bunun 8 katı, <b>Günlük</b> 24 katı. Kesintisiz üç vardiya ve %100 verim varsayımıyla, duruş ve fire hesaba katılmadan.</p>
+  </section>
+
+  <!-- MACHINES -->
+  <section class="view" id="view-machines" hidden>
+    <div class="toolbar">
+      <input type="search" id="mcSearch" placeholder="Makine kodu, adı veya tipi ara">
+      <span class="spacer"></span>
+      <span class="count" id="mcCount"></span>
+      <button class="btn primary" id="btnNewMachine">Yeni makine</button>
+    </div>
+    <div class="panel"><div class="scroll"><table>
+      <thead><tr><th>Makine Kodu</th><th>Makine Adı</th><th>Tipi</th><th class="r">İş emri</th><th></th></tr></thead>
+      <tbody id="mcBody"></tbody>
+    </table></div></div>
+    <p class="hint" style="margin-top:10px">İş emrindeki Makine sütunu bu listeden seçilir. Adı ya da tipi burada değiştirdiğinde tüm iş emirlerinde birlikte değişir; iş emirleri makine koduna bağlıdır.</p>
+  </section>
+</main>
+
+</aside>
+<div class="toast" id="toast"></div>
+
+<script type="application/json" id="seed">{"basla":"2026-09-02","bitis":"2026-09-02","products":[],"orders":[]}</script>
+<script>
+(function(){
+"use strict";
+const SEED = JSON.parse(document.getElementById("seed").textContent);
+const KEY = "uretim-takip-2025-v1";
+const SEED_VER = 2;
+const BUILD = "18";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const nf = new Intl.NumberFormat("tr-TR");
+const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
+const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const DAYNAMES = ["Pzt","Sal","Çar","Per","Cum","Cmt"];
+const MACHINES = [];
+/* Eski serbest metin adlardan yeni makine koduna, yalnızca tek karşılığı olanlar.
+   Üç ENGEL 100T satırı bilerek dışarıda: yeni listede üç ayrı 100'lük Engel var,
+   hangisinin hangisi olduğu iş emrinden anlaşılmıyor — kullanıcı seçecek. */
+const MACH_MAP = {};
+/* Bir ara bu üç kod eski adlara tahminle bağlanmıştı; kayıtlı veride kaldıysa geri alınır. */
+const MACH_UNMAP = {};
+const MONTHS = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const el = (t,c,txt) => { const n=document.createElement(t); if(c)n.className=c; if(txt!=null)n.textContent=txt; return n; };
+const n0 = v => (v==null||v===""||isNaN(v)) ? 0 : +v;
+const fmt = v => nf.format(Math.round(n0(v)));
+const fmt1 = v => nf1.format(n0(v));
+const fmt2 = v => nf2.format(n0(v));
+const pctS = v => nf1.format(n0(v)*100)+"%";
+function dISO(d){ return d.toISOString().slice(0,10); }
+function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); }
+function addDays(iso,k){ const d=parseISO(iso); d.setUTCDate(d.getUTCDate()+k); return dISO(d); }
+function trDate(iso){ const d=parseISO(iso); return String(d.getUTCDate()).padStart(2,"0")+"."+String(d.getUTCMonth()+1).padStart(2,"0")+"."+d.getUTCFullYear(); }
+function shortDate(iso){ const d=parseISO(iso); return d.getUTCDate()+" "+MONTHS[d.getUTCMonth()]; }
+function weekStart(iso){ const d=parseISO(iso); const w=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-w); return dISO(d); }
+function debounce(fn,ms){ let t; return function(){ clearTimeout(t); const a=arguments; t=setTimeout(()=>fn.apply(null,a),ms); }; }
+
+/* ---------- veri katmanı: her kullanıcının verisi kendi tarayıcısında ---------- */
+let S={orders:[],products:[],machines:[]};
+let statusNote="";
+
+function seedState(){
+  return {
+    orders: SEED.orders.map((o,i)=>Object.assign({_id:"s"+String(i).padStart(3,"0")},o,
+      {days:Object.assign({},o.days), makine:MACH_MAP[o.makine]||o.makine||""})),
+    products: SEED.products.map((p,i)=>Object.assign({_id:"p"+String(i).padStart(3,"0")},p)),
+    machines: MACHINES.map((m,i)=>Object.assign({_id:"m"+String(i).padStart(2,"0")},m)),
+    pver: SEED_VER
+  };
+}
+function loadLocal(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw){
+      const p=JSON.parse(raw);
+      if(p&&p.orders&&p.orders.length){
+        if(!p.machines||!p.machines.length) p.machines=MACHINES.map((m,i)=>Object.assign({_id:"m"+String(i).padStart(2,"0")},m));
+        if(!p.products) p.products=[];
+        p.orders.forEach(o=>{
+          if(!o._id) o._id=newId();
+          if(!o.days) o.days={};
+          if(MACH_UNMAP[o.makine]) o.makine=MACH_UNMAP[o.makine];
+          if(MACH_MAP[o.makine]) o.makine=MACH_MAP[o.makine];
+        });
+        return p;
+      }
+    }
+  }catch(e){}
+  return null;
+}
+const persistLocal=debounce(function(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify({orders:S.orders,products:S.products,machines:S.machines,
+      pver:S.pver||SEED_VER, savedAt:new Date().toISOString()}));
+    if(statusNote==="Kaydedilemedi") statusNote="";
+  }catch(e){ statusNote="Kaydedilemedi: tarayıcı deposu dolu"; }
+  paintStatus();
+},250);
+
+function newId(){ return "z"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function saveOrder(){ persistLocal(); }
+function saveProduct(){ persistLocal(); }
+function saveMachine(){ persistLocal(); }
+function removeOrder(o){ const i=S.orders.indexOf(o); if(i>=0) S.orders.splice(i,1); persistLocal(); }
+function removeProduct(p){ const i=S.products.indexOf(p); if(i>=0) S.products.splice(i,1); persistLocal(); }
+function removeMachine(m){ const i=S.machines.indexOf(m); if(i>=0) S.machines.splice(i,1); persistLocal(); }
+
+/* Gömülü ürün listesini kayıtlı listeye işler: eşleşenleri günceller, eksikleri ekler,
+   elle eklenmiş ürünlere ve iş emirlerine dokunmaz. */
+function syncSeedProducts(){
+  let upd=0, add=0;
+  SEED.products.forEach(sp=>{
+    const cur=S.products.find(x=>x.kod===sp.kod);
+    if(cur){
+      const before=JSON.stringify([cur.ad,cur.cevrim,cur.goz,cur.net,cur.gramaj]);
+      cur.ad=sp.ad; cur.cevrim=sp.cevrim; cur.goz=sp.goz; cur.net=sp.net; cur.gramaj=sp.gramaj;
+      if(JSON.stringify([cur.ad,cur.cevrim,cur.goz,cur.net,cur.gramaj])!==before) upd++;
+    } else {
+      S.products.push(Object.assign({_id:newId()},sp)); add++;
+    }
+  });
+  if(upd||add) persistLocal();
+  return {upd:upd, add:add};
+}
+function syncMsg(r){
+  if(r.upd&&r.add) return fmt(r.upd)+" ürün güncellendi, "+fmt(r.add)+" ürün eklendi";
+  if(r.upd) return fmt(r.upd)+" ürün güncellendi";
+  if(r.add) return fmt(r.add)+" ürün eklendi";
+  return "Ürün listesi zaten güncel";
+}
+function autoSync(){
+  if(S.pver===SEED_VER) return;
+  const r=syncSeedProducts();
+  S.pver=SEED_VER; persistLocal();
+  if(r.upd||r.add) setTimeout(()=>toast("Ürün listesi yenilendi: "+syncMsg(r)),700);
+}
+function replaceAll(orders,products,machines,msg){
+  S.orders=orders.map((o,i)=>Object.assign({},o,{_id:"s"+String(i).padStart(3,"0"),days:o.days||{}}));
+  S.products=products.map((p,i)=>Object.assign({},p,{_id:"p"+String(i).padStart(3,"0")}));
+  S.machines=(machines||[]).map((m,i)=>Object.assign({},m,{_id:"m"+String(i).padStart(2,"0")}));
+  S.pver=SEED_VER;
+  persistLocal(); fillMachineSelects(); render(); toast(msg);
+}
+
+function paintStatus(){
+  const s=$("#savedAt");
+  s.textContent = statusNote ? "Bu tarayıcıda kayıtlı · "+statusNote : "Bu tarayıcıda kayıtlı · sürüm "+BUILD;
+  s.style.color = statusNote ? "var(--crit)" : "";
+}
+let toastT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2600); }
+
+function onFirstData(){
+  if(firstData||!S.orders.length) return;
+  firstData=true; monthAuto=true;
+  $("#dDate").value=lastDataDay();
+  const f=fullRange(); $("#sFrom").value=f.from; $("#sTo").value=f.to;
+}
+function boot(){
+  S=loadLocal()||seedState();
+  autoSync(); onFirstData();
+  fillMachineSelects(); render(); paintStatus();
+}
+
+/* ---------- computation (2025 sayfasındaki formüllerin birebir karşılığı) ---------- */
+function productBy(kod){ return S.products.find(p => p.kod === kod) || null; }
+function calc(o){
+  const P = (n0(o.cevrim)>0 && n0(o.kgoz)>0) ? 3600/n0(o.cevrim)*n0(o.kgoz) : 0;   // Teorik saatlik kapasite
+  const Q = (n0(o.gcevrim)>0 && n0(o.cgoz)>0) ? 3600/n0(o.gcevrim)*n0(o.cgoz) : 0; // Gerçekleşen saatlik kapasite
+  let J = 0, son = null;
+  for (const k in o.days){ const v=n0(o.days[k]); if(v){ J+=v; if(!son||k>son) son=k; } }
+  const K = P ? J/P : 0;      // Planlanan çalışma saati
+  const L = Q ? J/Q : 0;      // Gerçekleşen çalışma saati
+  const M = (!L || L<K) ? 0 : 1-(K/L);  // Sapma oranı
+  const N = Math.max(L-K,0);            // Fazla çalışma
+  const pr = productBy(o.kod);
+  const V = pr && pr.gramaj ? n0(pr.gramaj)*n0(o.hatali)/1000 : 0; // Hammadde firesi (kg)
+  const pct = n0(o.plan) ? J/n0(o.plan) : 0;
+  return {P:P,Q:Q,J:J,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
+}
+function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
+
+/* ---------- machines ---------- */
+function machineByKod(kod){ return S.machines.find(m=>m.kod===kod)||null; }
+function machineLabel(kod){
+  if(!kod) return "—";
+  const m=machineByKod(kod);
+  if(!m) return kod;
+  return m.ad + (m.tip?" "+m.tip:"");
+}
+function machineItems(withEmpty){
+  const out = withEmpty ? [{kod:"", ad:"— makine yok —", tip:""}] : [];
+  S.machines.forEach(m=>out.push({kod:m.kod, ad:m.ad||m.kod, tip:m.tip||""}));
+  const known=new Set(S.machines.map(m=>m.kod)), extra=new Set();
+  S.orders.forEach(o=>{ if(o.makine && !known.has(o.makine)) extra.add(o.makine); });
+  Array.from(extra).sort().forEach(k=>out.push({kod:k, ad:k, tip:"(listede yok)"}));
+  return out;
+}
+function machineOptions(){ return machineItems(false).map(it=>[it.kod, it.ad+(it.tip?" "+it.tip:"")]); }
+function trlow(x){ return String(x==null?"":x).toLocaleLowerCase("tr"); }
+function fillMachineSelects(){
+  ["#oMachine","#dMachine"].forEach(sel=>{
+    const n=$(sel), cur=n.value;
+    n.innerHTML=""; n.appendChild(new Option("Tüm makineler",""));
+    machineOptions().forEach(([k,l])=>n.appendChild(new Option(l,k)));
+    n.value=cur;
+  });
+}
+
+/* ---------- views ---------- */
+const views = ["orders","daily","summary","products","machines"];
+let view = "orders";
+function setView(v){
+  view=v;
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.view===v)));
+  views.forEach(k => { $("#view-"+k).hidden = (k!==v); });
+  render();
+}
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>setView(t.dataset.view)));
+
+/* ---------- İŞ EMİRLERİ IZGARASI ---------- */
+const ROWH=30, HEADH=38;
+const BASE_COLS=[
+  {k:"ie",   t:"İş Emri",            w:112, type:"text", frozen:true},
+  {k:"kod",  t:"Stok Kodu",          w:106, type:"code", frozen:true},
+  {k:"urun", t:"Ürün",               w:224, type:"product", frozen:true},
+  {k:"cevrim",  t:"Çevrim Süresi",       w:84, type:"num", dec:2},
+  {k:"gcevrim", t:"Gerçekleşen Çevrim",  w:92, type:"num", dec:2},
+  {k:"kgoz", t:"Kalıp Göz Sayısı",   w:78, type:"num"},
+  {k:"cgoz", t:"Çalışan Göz Sayısı", w:78, type:"num"},
+  {k:"makine", t:"Makine",           w:146, type:"select"},
+  {k:"plan", t:"Planlanan Üretim",   w:106, type:"num"},
+  {c:"J",    t:"Gerçekleşen Üretim", w:106, calc:true},
+  {c:"pct",  t:"Gerçekleşme",        w:104, calc:true, meter:true},
+  {c:"K",    t:"Planlanan Çalışma Saati", w:96, calc:true, dec:2},
+  {c:"L",    t:"Gerçekleşen Çalışma",     w:96, calc:true, dec:2},
+  {c:"M",    t:"Sapma Oranı",        w:82, calc:true, pct:true},
+  {c:"N",    t:"Fazla Çalışma",      w:86, calc:true, dec:2},
+  {k:"durus",t:"Arıza / Duruş",      w:82, type:"num", dec:2},
+  {c:"P",    t:"Teorik Saatlik Kapasite",  w:94, calc:true},
+  {c:"Q",    t:"Gerçekleşen Saatlik",      w:94, calc:true},
+  {c:"vardiya", t:"Teorik Vardiya (8 sa)", w:96, calc:true},
+  {c:"R",    t:"Teorik 24 Saatlik",        w:96, calc:true},
+  {c:"S",    t:"Gerçekleşen 24 Saatlik",   w:96, calc:true},
+  {k:"hatali", t:"Hatalı Üretim",    w:88, type:"num"},
+  {c:"V",    t:"Hammadde Firesi",    w:92, calc:true, dec:2}
+];
+let cols=[], gridRows=[], monthKey="", sortK="", sortDir=1;
+let sel={r:0,c:0,ar:0,ac:0}, editing=null, headBuilt="", monthAuto=true, firstData=false;
+
+function oneNum(s){
+  s=String(s==null?"":s).trim().replace(/\s|₺|%/g,"");
+  if(!s) return null;
+  if(s.indexOf(",")>=0) s=s.replace(/\./g,"").replace(",",".");
+  else if(/^-?\d{1,3}(\.\d{3})+$/.test(s)) s=s.replace(/\./g,"");
+  const v=Number(s); return isNaN(v)?null:v;
+}
+/* "12000+13500+11000" gibi vardiya toplamlarını da kabul eder (Excel'deki gibi, baştaki = isteğe bağlı). */
+function isSum(t){
+  const x=String(t==null?"":t).replace(/^=/,"").replace(/\s/g,"");
+  return /^[-+]?[\d.,]+([-+][\d.,]+)+$/.test(x);
+}
+function parseNum(s){
+  let t=String(s==null?"":s).trim().replace(/^=/,"");
+  if(!t) return null;
+  if(isSum(t)){
+    let total=0, ok=false;
+    t.replace(/\s/g,"").replace(/([-+]?)([\d.,]+)/g,function(m,sg,num){
+      const v=oneNum(num);
+      if(v!=null){ total += (sg==="-" ? -v : v); ok=true; }
+      return m;
+    });
+    return ok?total:null;
+  }
+  return oneNum(t);
+}
+function daysOfMonth(mk){
+  const y=+mk.slice(0,4), m=+mk.slice(5,7);
+  const last=new Date(Date.UTC(y,m,0)).getUTCDate(), out=[];
+  for(let d=1;d<=last;d++) out.push(mk+"-"+String(d).padStart(2,"0"));
+  return out;
+}
+function monthLabel(mk){ return ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"][+mk.slice(5,7)-1]+" "+mk.slice(0,4); }
+function dataMonths(){
+  const s=new Set();
+  S.orders.forEach(o=>{ for(const k in o.days){ if(n0(o.days[k])) s.add(k.slice(0,7)); } });
+  return s;
+}
+/* Ay listesi kesintisizdir: en eski kayıttan bugünün 24 ay sonrasına kadar her ay seçilebilir. */
+function monthList(){
+  const t=todayISO().slice(0,7);
+  const dm=dataMonths();
+  let lo=t, hi=t;
+  dm.forEach(m=>{ if(m<lo) lo=m; if(m>hi) hi=m; });
+  if(SEED.basla.slice(0,7)<lo) lo=SEED.basla.slice(0,7);
+  if(monthKey && monthKey<lo) lo=monthKey;
+  let end=shiftMonth(hi>t?hi:t, 24);
+  if(monthKey && monthKey>end) end=monthKey;
+  const out=[]; let m=lo, guard=0;
+  while(m<=end && guard++<800){ out.push(m); m=shiftMonth(m,1); }
+  return out;
+}
+function shiftMonth(mk,k){
+  let y=+mk.slice(0,4), m=+mk.slice(5,7)+k;
+  while(m<1){ m+=12; y--; } while(m>12){ m-=12; y++; }
+  return y+"-"+String(m).padStart(2,"0");
+}
+function buildCols(){
+  cols=BASE_COLS.slice();
+  daysOfMonth(monthKey).forEach(iso=>{
+    const w=(parseISO(iso).getUTCDay()+6)%7, d=parseISO(iso).getUTCDate();
+    if(w===6) cols.push({week:weekStart(iso), t:"Hafta saati", w:80, calc:true, weekly:true, dec:2});
+    else cols.push({date:iso, t:DAYNAMES[w]+" "+d, w:80, type:"day"});
+  });
+  let left=0, lastFrz=null;
+  cols.forEach(c=>{ if(c.frozen){ c.left=left; left+=c.w; lastFrz=c; } });
+  if(lastFrz) lastFrz.lastFrz=true;
+}
+function frozenWidth(){ let w=0; cols.forEach(c=>{ if(c.frozen) w+=c.w; }); return w; }
+function colX(i){ let x=0; for(let j=0;j<i;j++) x+=cols[j].w; return x; }
+
+function filteredOrders(){
+  const q=$("#oSearch").value.trim().toLocaleLowerCase("tr");
+  const m=$("#oMachine").value, st=$("#oStatus").value;
+  return S.orders.filter(o=>{
+    if(m && o.makine!==m) return false;
+    if(q && ((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")).toLocaleLowerCase("tr").indexOf(q)<0) return false;
+    if(st){
+      const c=calc(o);
+      if(st==="bos" && c.J) return false;
+      if(st==="tamam" && !(n0(o.plan) && c.J>=n0(o.plan))) return false;
+      if(st==="devam" && !(c.J>0 && (!n0(o.plan) || c.J<n0(o.plan)))) return false;
+    }
+    return true;
+  });
+}
+function computeRows(){
+  const rows=filteredOrders();
+  const k=sortK;
+  if(k) rows.sort((a,b)=>{
+    let x,y;
+    if(k==="ie"||k==="kod"||k==="urun"||k==="makine"){ x=a[k]||""; y=b[k]||""; return String(x).localeCompare(String(y),"tr")*sortDir; }
+    if(k==="plan"||k==="durus"||k==="hatali"||k==="cevrim"||k==="gcevrim"||k==="kgoz"||k==="cgoz"){ x=n0(a[k]); y=n0(b[k]); }
+    else { x=n0(calc(a)[k]); y=n0(calc(b)[k]); }
+    return (x-y)*sortDir;
+  });
+  gridRows=rows;
+  if(sel.r>=rows.length) sel.r=Math.max(0,rows.length-1);
+  $("#oCount").textContent=fmt(rows.length)+" iş emri";
+}
+function cellText(o,col,c){
+  if(col.weekly){ let s=0; for(let i=0;i<6;i++) s+=n0(o.days[addDays(col.week,i)]); return s? fmt2(c.Q? s/c.Q : 0) : ""; }
+  if(col.type==="day"){ const v=o.days[col.date]; return v==null?"":fmt(v); }
+  if(col.calc){
+    const v=n0(c[col.c]);
+    if(col.pct) return pctS(v);
+    if(col.meter) return v? nf.format(Math.round(v*100))+"%" : "";
+    if(!v) return "";
+    return col.dec? fmt2(v) : fmt(v);
+  }
+  if(col.type==="select") return o.makine?machineLabel(o.makine):"";
+  const v=o[col.k];
+  if(col.type==="num") return v==null||v===""?"":(col.dec?fmt2(v):fmt(v));
+  return v==null?"":String(v);
+}
+function cellClass(col,o,c){
+  let cl=[];
+  if(col.frozen) cl.push("frz");
+  if(col.lastFrz) cl.push("last-frz");
+  if(col.frozen && col.k!=="ie") cl.push("hide-frz");
+  if(col.weekly) cl.push("wk","num-c");
+  else if(col.calc) cl.push("calc");
+  if(col.type==="num"||col.type==="day"||col.calc) cl.push("num-c");
+  if(col.c==="M"){ const m=n0(c.M); if(m>=0.20) cl.push("dev-crit"); else if(m>=0.05) cl.push("dev-warn"); }
+  return cl.join(" ");
+}
+function renderHead(){
+  const sig=monthKey+"|"+sortK+"|"+sortDir;
+  const cg=$("#gridCols"), hr=$("#gridHead");
+  if(headBuilt!==sig){
+    headBuilt=sig;
+    cg.innerHTML=""; hr.innerHTML="";
+    cols.forEach((col,i)=>{
+      const cc=document.createElement("col"); cc.style.width=col.w+"px"; cg.appendChild(cc);
+      const th=el("th",null,col.t);
+      th.className=(col.frozen?"frz ":"")+(col.lastFrz?"last-frz ":"")+(col.frozen&&col.k!=="ie"?"hide-frz ":"")+((col.type==="num"||col.type==="day"||col.calc)?"num-c":"");
+      if(col.frozen) th.style.left=col.left+"px";
+      const sk=col.k||col.c;
+      if(sk && !col.weekly && col.type!=="day"){
+        th.addEventListener("click",()=>{ if(sortK!==sk){sortK=sk;sortDir=1;} else if(sortDir>0){sortDir=-1;} else {sortK="";sortDir=1;} headBuilt=""; renderOrders(); });
+        if(sortK===sk){ const d=el("span","dir",sortDir>0?" ▲":" ▼"); th.appendChild(d); }
+      } else { th.style.cursor="default"; }
+      hr.appendChild(th);
+    });
+  }
+}
+function renderBody(){
+  const sc=$("#gridScroll"), tb=$("#gridBody");
+  const total=gridRows.length;
+  const top=Math.max(0,sc.scrollTop-HEADH);
+  let start=Math.max(0,Math.floor(top/ROWH)-8);
+  let end=Math.min(total,Math.ceil((top+sc.clientHeight)/ROWH)+8);
+  if(end<=start) end=Math.min(total,start+1);
+  tb.innerHTML="";
+  if(!total){
+    const msg = S.orders.length ? "Bu filtreye uyan iş emri yok."
+      : "Henüz iş emri yok. Üstteki “Yeni iş emri” ile ilk satırı ekle; stok kodunu girince ürün bilgileri Ürün Listesi'nden dolar.";
+    const tr=el("tr"), tdx=el("td","spacer",msg); tdx.colSpan=cols.length;
+    tdx.style.padding="30px"; tdx.style.textAlign="center"; tdx.style.color="var(--muted)";
+    tr.appendChild(tdx); tb.appendChild(tr); $("#cellInfo").textContent=""; return;
+  }
+  const frag=document.createDocumentFragment();
+  if(start>0) frag.appendChild(spacerRow(start*ROWH));
+  const lo=Math.min(sel.r,sel.ar), hi=Math.max(sel.r,sel.ar), cl=Math.min(sel.c,sel.ac), ch=Math.max(sel.c,sel.ac);
+  for(let r=start;r<end;r++){
+    const o=gridRows[r], c=calc(o), tr=el("tr");
+    tr.dataset.r=r;
+    cols.forEach((col,i)=>{
+      const cell=el("td",cellClass(col,o,c),cellText(o,col,c));
+      if(col.frozen) cell.style.left=col.left+"px";
+      if(r>=lo&&r<=hi&&i>=cl&&i<=ch&&!(r===sel.r&&i===sel.c)) cell.classList.add("inrange");
+      if(r===sel.r&&i===sel.c) cell.classList.add("active");
+      cell.dataset.r=r; cell.dataset.c=i;
+      tr.appendChild(cell);
+    });
+    frag.appendChild(tr);
+  }
+  if(end<total) frag.appendChild(spacerRow((total-end)*ROWH));
+  tb.appendChild(frag);
+  paintCellInfo();
+}
+function spacerRow(h){
+  const tr=el("tr"), td2=el("td","spacer"); td2.colSpan=cols.length; td2.style.height=h+"px"; tr.appendChild(td2); return tr;
+}
+function paintCellInfo(){
+  const o=gridRows[sel.r], col=cols[sel.c];
+  if(!o||!col){ $("#cellInfo").textContent=""; return; }
+  const c=calc(o);
+  let what = col.date ? trDate(col.date) : (col.weekly ? trDate(col.week)+" haftası" : col.t);
+  const v=cellText(o,col,c);
+  $("#cellInfo").innerHTML="";
+  $("#cellInfo").appendChild(el("b",null,o.ie||"—"));
+  $("#cellInfo").appendChild(document.createTextNode(" · "+what+(v?" · ":"")));
+  if(v) $("#cellInfo").appendChild(el("b",null,v));
+  if(col.calc) $("#cellInfo").appendChild(document.createTextNode(" · hesaplanan sütun, yazılamaz"));
+  else if(col.type==="day"){
+    const e=dayExp(o,col.date);
+    if(e){ $("#cellInfo").appendChild(document.createTextNode(" · ")); $("#cellInfo").appendChild(el("b",null,e)); }
+    else $("#cellInfo").appendChild(document.createTextNode(" · vardiyaları artı ile toplayabilirsin: 12000+13500+11000"));
+  }
+  else if(col.type==="select"||col.type==="code"||col.type==="product") $("#cellInfo").appendChild(document.createTextNode(" · Enter ile listeden ara ve seç"));
+}
+function lastDay(){
+  let m="";
+  S.orders.forEach(o=>{ for(const k in o.days){ if(n0(o.days[k]) && k>m) m=k; } });
+  return m;
+}
+function firstDay(){
+  let m="";
+  S.orders.forEach(o=>{ for(const k in o.days){ if(n0(o.days[k]) && (!m||k<m)) m=k; } });
+  return m;
+}
+/* Kayıt ileri bir tarihe uzanmıyorsa bugünden başlanır. */
+function lastDataDay(){ const m=lastDay(), t=todayISO(); return m&&m>t ? m : t; }
+function lastDataMonth(){ const m=lastDay(), t=todayISO().slice(0,7); const mm=m?m.slice(0,7):""; return mm&&mm>t ? mm : t; }
+function paintBrand(){
+  const t=parseISO(todayISO());
+  const AY=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+  $("#brandSpan").textContent = t.getUTCDate()+" "+AY[t.getUTCMonth()]+" "+t.getUTCFullYear()+" · "+gunAdi(todayISO());
+}
+function renderOrders(){
+  if(monthAuto||!monthKey){ const m=lastDataMonth(); if(m!==monthKey){ monthKey=m; headBuilt=""; } }
+  buildCols(); computeRows(); renderHead(); renderBody(); fillMonthSel();
+}
+function fillMonthSel(){
+  const sel=$("#mSel"), list=monthList(), dm=dataMonths();
+  sel.innerHTML="";
+  let yr=null, grp=null;
+  list.forEach(m=>{
+    const y=m.slice(0,4);
+    if(y!==yr){ yr=y; grp=document.createElement("optgroup"); grp.label=y; sel.appendChild(grp); }
+    grp.appendChild(new Option((dm.has(m)?"• ":"")+monthLabel(m), m));
+  });
+  sel.value=monthKey;
+}
+/* -- yazma -- */
+function writeCell(o,col,raw){
+  if(col.calc) return false;
+  if(col.type==="day"){ setDay(o,col.date,raw); return true; }
+  if(col.type==="num"){ o[col.k]=parseNum(raw); saveOrder(o); return true; }
+  if(col.k==="kod"){
+    o.kod=String(raw).trim();
+    const p=productBy(o.kod);
+    if(p){ o.urun=p.ad; if(p.cevrim!=null){ o.cevrim=p.cevrim; if(o.gcevrim==null) o.gcevrim=p.cevrim; }
+           if(p.goz!=null){ o.kgoz=p.goz; if(o.cgoz==null) o.cgoz=p.goz; } }
+    saveOrder(o); return true;
+  }
+  o[col.k]=String(raw); saveOrder(o); return true;
+}
+/* -- gezinme -- */
+function moveTo(r,c,extend){
+  sel.r=Math.max(0,Math.min(gridRows.length-1,r));
+  sel.c=Math.max(0,Math.min(cols.length-1,c));
+  if(!extend){ sel.ar=sel.r; sel.ac=sel.c; }
+  ensureVisible(); renderBody();
+}
+function ensureVisible(){
+  const sc=$("#gridScroll");
+  const y=sel.r*ROWH;
+  if(y < sc.scrollTop) sc.scrollTop=y;
+  else if(y+ROWH+HEADH > sc.scrollTop+sc.clientHeight) sc.scrollTop=y+ROWH+HEADH-sc.clientHeight;
+  const col=cols[sel.c];
+  if(!col.frozen){
+    const x=colX(sel.c), fw=frozenWidth();
+    if(x < sc.scrollLeft+fw) sc.scrollLeft=x-fw;
+    else if(x+col.w > sc.scrollLeft+sc.clientWidth) sc.scrollLeft=x+col.w-sc.clientWidth;
+  }
+}
+function startEdit(seedChar){
+  const o=gridRows[sel.r], col=cols[sel.c];
+  if(!o||!col||col.calc){ if(col&&col.calc) toast("Bu sütun kendiliğinden hesaplanır"); return; }
+  const cell=$("#gridBody td.active"); if(!cell) return;
+  cell.classList.add("editing"); cell.textContent="";
+  if(col.type==="select"){ startPickEdit(cell,o,col,seedChar,machineCfg()); return; }
+  if(col.type==="code"||col.type==="product"){ startPickEdit(cell,o,col,seedChar,productCfg(col)); return; }
+  let inp;
+  {
+    inp=el("input"); inp.className="cellin";
+    inp.type=(col.type==="num"||col.type==="day")?"text":"text";
+    inp.value = seedChar!=null ? seedChar
+      : (col.type==="day" ? (dayExp(o,col.date) || (o.days[col.date]==null?"":o.days[col.date]))
+      : (col.type==="num" ? (o[col.k]==null?"":String(o[col.k]).replace(".",",")) : (o[col.k]==null?"":o[col.k])));
+  }
+  cell.appendChild(inp);
+  editing={o:o,col:col,inp:inp,cell:cell};
+  inp.focus();
+  if(inp.setSelectionRange && seedChar==null) inp.setSelectionRange(inp.value.length,inp.value.length);
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){ e.preventDefault(); commitEdit(); moveTo(sel.r+1,sel.c); }
+    else if(e.key==="Tab"){ e.preventDefault(); commitEdit(); moveTo(sel.r,sel.c+(e.shiftKey?-1:1)); }
+    else if(e.key==="Escape"){ e.preventDefault(); cancelEdit(); }
+    else if((e.key==="ArrowUp"||e.key==="ArrowDown")&&col.type!=="select"){ e.preventDefault(); commitEdit(); moveTo(sel.r+(e.key==="ArrowDown"?1:-1),sel.c); }
+    e.stopPropagation();
+  });
+}
+/* Aramalı seçici: makine ve ürün hücrelerinde yazdıkça süzülen liste. */
+function machineCfg(){
+  return {
+    bos:"— makine yok —",
+    ara:"Makine ara",
+    items:()=>machineItems(false).map(m=>({key:m.kod, ad:m.ad, sub:m.tip, right:m.kod===m.ad?"":m.kod})),
+    current:o=>o.makine||"",
+    apply:(o,it)=>{ o.makine=it.key; saveOrder(o); }
+  };
+}
+function productCfg(col){
+  return {
+    bos:"— ürün seçilmedi —",
+    ara:"Ürün adı ya da stok kodu ara",
+    items:()=>S.products.map(p=>({key:p.kod, ad:p.ad||p.kod, sub:"", right:p.kod})),
+    current:o=>o.kod||"",
+    apply:(o,it)=>{
+      if(!it.key){ o.kod=""; o.urun=""; saveOrder(o); return; }
+      o.kod=it.key;
+      const p=productBy(it.key);
+      if(p){
+        o.urun=p.ad;
+        if(p.cevrim!=null){ o.cevrim=p.cevrim; if(o.gcevrim==null) o.gcevrim=p.cevrim; }
+        if(p.goz!=null){ o.kgoz=p.goz; if(o.cgoz==null) o.cgoz=p.goz; }
+      }
+      saveOrder(o);
+    },
+    /* Listede olmayan bir şey yazıldıysa serbest metin olarak durur. */
+    applyRaw:(o,txt)=>{ o[col.k]=txt; saveOrder(o); }
+  };
+}
+function startPickEdit(cell,o,col,seedChar,cfg){
+  const inp=el("input"); inp.className="cellin"; inp.type="text";
+  inp.value = seedChar!=null ? seedChar : "";
+  const curKey=cfg.current(o);
+  inp.placeholder = (col.type==="product" ? (o.urun||cfg.ara) : (curKey?machineLabel(curKey):cfg.ara));
+  inp.setAttribute("aria-label",cfg.ara);
+  cell.appendChild(inp);
+  const pop=el("div","combo"); pop.setAttribute("role","listbox");
+  document.body.appendChild(pop);
+  let items=[], hi=0;
+  editing={o:o, col:col, inp:inp, cell:cell, pop:pop, cfg:cfg, pick:()=> items[hi]};
+
+  function place(){
+    const r=cell.getBoundingClientRect();
+    pop.style.minWidth=Math.max(r.width,290)+"px";
+    pop.style.left=Math.max(8,Math.min(r.left, window.innerWidth-pop.offsetWidth-8))+"px";
+    const h=pop.offsetHeight;
+    pop.style.top=(r.bottom+h+10>window.innerHeight && r.top-h-4>0 ? r.top-h-4 : r.bottom+3)+"px";
+  }
+  function mark(cls,text,q){
+    const sp=el("span",cls);
+    const i=q ? trlow(text).indexOf(q) : -1;
+    if(i<0){ sp.textContent=text; return sp; }
+    sp.appendChild(document.createTextNode(text.slice(0,i)));
+    sp.appendChild(el("mark",null,text.slice(i,i+q.length)));
+    sp.appendChild(document.createTextNode(text.slice(i+q.length)));
+    return sp;
+  }
+  function highlight(){
+    Array.prototype.forEach.call(pop.querySelectorAll(".ci"),(c,i)=>c.setAttribute("aria-selected",String(i===hi)));
+    const cur=pop.querySelectorAll(".ci")[hi];
+    if(cur&&cur.scrollIntoView) cur.scrollIntoView({block:"nearest"});
+  }
+  function build(reset){
+    const q=trlow(inp.value.trim());
+    const all=[{key:"", ad:cfg.bos, sub:"", right:""}].concat(cfg.items());
+    items = q ? all.filter(it=> it.key && trlow(it.ad+" "+it.sub+" "+it.right).indexOf(q)>=0) : all;
+    if(reset) hi=0;
+    else { const i=items.findIndex(it=>it.key===curKey); hi=i>=0?i:0; }
+    if(hi>=items.length) hi=Math.max(0,items.length-1);
+    pop.innerHTML="";
+    pop.appendChild(el("div","head", q ? items.length+" eşleşme" : cfg.ara));
+    if(!items.length){ pop.appendChild(el("div","none","Eşleşen kayıt yok — yazdığın metin olduğu gibi kalır")); place(); return; }
+    items.forEach((it,i)=>{
+      const r=el("div","ci"); r.setAttribute("role","option");
+      r.appendChild(mark("ad",it.ad,q));
+      if(it.sub) r.appendChild(mark("tip",it.sub,q));
+      if(it.right) r.appendChild(mark("kod",it.right,q));
+      r.addEventListener("mousedown",e=>{ e.preventDefault(); hi=i; commitEdit(); moveTo(sel.r+1,sel.c); });
+      pop.appendChild(r);
+    });
+    highlight(); place();
+  }
+  inp.addEventListener("input",()=>build(true));
+  inp.addEventListener("keydown",e=>{
+    const k=e.key;
+    if(k==="ArrowDown"){ e.preventDefault(); if(hi<items.length-1){ hi++; highlight(); } }
+    else if(k==="ArrowUp"){ e.preventDefault(); if(hi>0){ hi--; highlight(); } }
+    else if(k==="Enter"){ e.preventDefault(); commitEdit(); moveTo(sel.r+1,sel.c); }
+    else if(k==="Tab"){ e.preventDefault(); commitEdit(); moveTo(sel.r,sel.c+(e.shiftKey?-1:1)); }
+    else if(k==="Escape"){ e.preventDefault(); cancelEdit(); }
+    e.stopPropagation();
+  });
+  build(seedChar!=null);
+  inp.focus();
+  if(inp.setSelectionRange) inp.setSelectionRange(inp.value.length,inp.value.length);
+}
+function commitEdit(){
+  if(!editing) return;
+  const e=editing; editing=null;
+  if(e.pop){
+    const it=e.pick();
+    if(it) e.cfg.apply(e.o,it);
+    else if(e.cfg.applyRaw && e.inp.value.trim()) e.cfg.applyRaw(e.o,e.inp.value.trim());
+    e.pop.remove();
+  } else writeCell(e.o,e.col,e.inp.value);
+  e.cell.classList.remove("editing");
+  $("#gridScroll").focus();
+  renderBody();
+}
+function cancelEdit(){
+  if(!editing) return;
+  if(editing.pop) editing.pop.remove();
+  editing.cell.classList.remove("editing");
+  editing=null; $("#gridScroll").focus(); renderBody();
+}
+function selRange(){
+  return {r0:Math.min(sel.r,sel.ar), r1:Math.max(sel.r,sel.ar), c0:Math.min(sel.c,sel.ac), c1:Math.max(sel.c,sel.ac)};
+}
+function clearRange(){
+  const g=selRange(); const hit=new Set();
+  for(let r=g.r0;r<=g.r1;r++) for(let c=g.c0;c<=g.c1;c++){
+    const col=cols[c]; if(col.calc) continue;
+    const o=gridRows[r];
+    if(col.type==="day") clearDay(o,col.date);
+    else o[col.k]= col.type==="num" ? null : "";
+    hit.add(o);
+  }
+  if(hit.size){ hit.forEach(saveOrder); renderOrders(); }
+}
+function fillDown(){
+  const g=selRange();
+  if(g.r1<=g.r0){ toast("Önce doldurulacak satırları seç (Shift + aşağı ok)"); return; }
+  const src=gridRows[g.r0], hit=new Set();
+  for(let c=g.c0;c<=g.c1;c++){
+    const col=cols[c]; if(col.calc) continue;
+    for(let r=g.r0+1;r<=g.r1;r++){
+      const o=gridRows[r];
+      if(col.type==="day"){
+        const v=src.days[col.date];
+        if(v==null) clearDay(o,col.date);
+        else { o.days[col.date]=v; const e=dayExp(src,col.date); if(e){ o.exp=o.exp||{}; o.exp[col.date]=e; } else if(o.exp) delete o.exp[col.date]; }
+      }
+      else o[col.k]=src[col.k];
+      hit.add(o);
+    }
+  }
+  if(hit.size){ hit.forEach(saveOrder); renderBody(); toast(hit.size+" satır dolduruldu"); }
+}
+function copyRange(){
+  const g=selRange(), out=[];
+  for(let r=g.r0;r<=g.r1;r++){
+    const o=gridRows[r], c=calc(o), line=[];
+    for(let i=g.c0;i<=g.c1;i++){
+      const col=cols[i];
+      let v;
+      if(col.calc||col.type==="text"||col.type==="select"||col.type==="code") v=cellText(o,col,c);
+      else if(col.type==="day") v=o.days[col.date]==null?"":o.days[col.date];
+      else v=o[col.k]==null?"":String(o[col.k]).replace(".",",");
+      line.push(v);
+    }
+    out.push(line.join("\t"));
+  }
+  return out.join("\n");
+}
+function pasteMatrix(text){
+  const lines=text.replace(/\r/g,"").replace(/\n$/,"").split("\n").map(l=>l.split("\t"));
+  const g=selRange();
+  if(lines.length===1 && lines[0].length===1 && (g.r1>g.r0||g.c1>g.c0)){
+    const hit=new Set();
+    for(let r=g.r0;r<=g.r1;r++) for(let c=g.c0;c<=g.c1;c++){
+      if(cols[c].calc) continue;
+      writeCell(gridRows[r],cols[c],lines[0][0]); hit.add(r);
+    }
+    renderOrders(); toast(hit.size+" satıra yazıldı"); return;
+  }
+  let n=0;
+  for(let i=0;i<lines.length;i++){
+    const r=sel.r+i; if(r>=gridRows.length) break;
+    for(let j=0;j<lines[i].length;j++){
+      const c=sel.c+j; if(c>=cols.length) break;
+      if(cols[c].calc) continue;
+      writeCell(gridRows[r],cols[c],lines[i][j]); n++;
+    }
+  }
+  if(n){ sel.ar=Math.min(gridRows.length-1,sel.r+lines.length-1); sel.ac=Math.min(cols.length-1,sel.c+lines[0].length-1); renderOrders(); toast(n+" hücre yapıştırıldı"); }
+}
+/* -- olaylar -- */
+$("#gridScroll").addEventListener("scroll",()=>{ if(editing){ if(editing.pop) cancelEdit(); else commitEdit(); } requestAnimationFrame(renderBody); });
+$("#gridScroll").addEventListener("mousedown",e=>{
+  const cell=e.target.closest("td"); if(!cell||cell.classList.contains("spacer")) return;
+  if(editing && editing.cell===cell) return;
+  if(editing) commitEdit();
+  const r=+cell.dataset.r, c=+cell.dataset.c;
+  if(isNaN(r)) return;
+  sel.r=r; sel.c=c;
+  if(!e.shiftKey){ sel.ar=r; sel.ac=c; }
+  renderBody(); $("#gridScroll").focus();
+});
+$("#gridScroll").addEventListener("dblclick",e=>{ if(e.target.closest("td")) startEdit(null); });
+$("#gridScroll").addEventListener("keydown",e=>{
+  if(editing) return;
+  if(!gridRows.length) return;
+  const k=e.key, ex=e.shiftKey;
+  if(k==="ArrowDown"){ e.preventDefault(); moveTo(sel.r+1,sel.c,ex); }
+  else if(k==="ArrowUp"){ e.preventDefault(); moveTo(sel.r-1,sel.c,ex); }
+  else if(k==="ArrowRight"){ e.preventDefault(); moveTo(sel.r,sel.c+1,ex); }
+  else if(k==="ArrowLeft"){ e.preventDefault(); moveTo(sel.r,sel.c-1,ex); }
+  else if(k==="Tab"){ e.preventDefault(); moveTo(sel.r,sel.c+(ex?-1:1)); }
+  else if(k==="Enter"){ e.preventDefault(); startEdit(null); }
+  else if(k==="F2"){ e.preventDefault(); startEdit(null); }
+  else if(k==="Home"){ e.preventDefault(); moveTo(sel.r,0,ex); }
+  else if(k==="End"){ e.preventDefault(); moveTo(sel.r,cols.length-1,ex); }
+  else if(k==="PageDown"){ e.preventDefault(); moveTo(sel.r+15,sel.c,ex); }
+  else if(k==="PageUp"){ e.preventDefault(); moveTo(sel.r-15,sel.c,ex); }
+  else if(k==="Delete"||k==="Backspace"){ e.preventDefault(); clearRange(); }
+  else if((e.ctrlKey||e.metaKey)&&(k==="d"||k==="D")){ e.preventDefault(); fillDown(); }
+  else if((e.ctrlKey||e.metaKey)&&(k==="c"||k==="C")){
+    if(navigator.clipboard&&navigator.clipboard.writeText){ e.preventDefault(); navigator.clipboard.writeText(copyRange()).then(()=>toast("Kopyalandı"),()=>{}); }
+  }
+  else if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&k.length===1){ e.preventDefault(); startEdit(k); }
+});
+function gridFocused(){ return view==="orders" && !editing && document.activeElement===$("#gridScroll"); }
+document.addEventListener("copy",e=>{
+  if(!gridFocused()) return;
+  e.preventDefault(); e.clipboardData.setData("text/plain",copyRange()); toast("Kopyalandı");
+});
+document.addEventListener("paste",e=>{
+  if(!gridFocused()) return;
+  e.preventDefault(); pasteMatrix(e.clipboardData.getData("text/plain"));
+});
+["#oSearch","#oMachine","#oStatus"].forEach(s=>$(s).addEventListener("input",()=>{ sel.r=0; sel.ar=0; renderOrders(); }));
+$("#mSel").addEventListener("change",()=>{ monthAuto=false; monthKey=$("#mSel").value; headBuilt=""; renderOrders(); });
+$("#mPrev").addEventListener("click",()=>{ monthAuto=false; monthKey=shiftMonth(monthKey,-1); headBuilt=""; renderOrders(); });
+$("#mNext").addEventListener("click",()=>{ monthAuto=false; monthKey=shiftMonth(monthKey,1); headBuilt=""; renderOrders(); });
+$("#mNow").addEventListener("click",()=>{ monthAuto=false; monthKey=todayISO().slice(0,7); headBuilt=""; renderOrders(); });
+$("#btnNew").addEventListener("click",()=>{
+  let n=1; while(S.orders.some(o=>o.ie==="YENİ-"+n)) n++;
+  const o={_id:newId(),ie:"YENİ-"+n,kod:"",urun:"",cevrim:null,gcevrim:null,kgoz:null,cgoz:null,makine:"",plan:null,durus:null,hatali:null,days:{}};
+  S.orders.push(o); saveOrder(o);
+  $("#oSearch").value=""; $("#oMachine").value=""; $("#oStatus").value="";
+  sortK=""; sortDir=1; renderOrders();
+  const i=gridRows.indexOf(o); if(i>=0){ sel.r=i; sel.c=0; sel.ar=i; sel.ac=0; ensureVisible(); renderBody(); }
+  toast("Satır eklendi — stok kodunu girince ürün bilgileri dolar");
+});
+$("#btnDelRow").addEventListener("click",()=>{
+  const o=gridRows[sel.r]; if(!o){ toast("Önce bir satır seç"); return; }
+  askConfirm("“"+(o.ie||"—")+"” iş emri ve tüm gün girişleri silinecek.",()=>{
+    removeOrder(o); renderOrders(); toast("İş emri silindi");
+  });
+});
+function focusOrder(ie){
+  setView("orders");
+  $("#oSearch").value=""; $("#oMachine").value=""; $("#oStatus").value="";
+  renderOrders();
+  const i=gridRows.findIndex(o=>o.ie===ie);
+  if(i>=0){ sel.r=i; sel.c=0; sel.ar=i; sel.ac=0; ensureVisible(); renderBody(); $("#gridScroll").focus(); }
+}
+function meter(pct,st){
+  const w=el("div","meter");
+  const tr=el("div","track"), f=el("div","fill");
+  f.style.width=Math.min(100,Math.max(0,n0(pct)*100))+"%";
+  tr.appendChild(f); w.appendChild(tr);
+  const lab=el("span","mono"); lab.style.fontSize="12px"; lab.style.minWidth="42px"; lab.style.textAlign="right";
+  lab.textContent = pct? nf.format(Math.round(pct*100))+"%" : "—";
+  w.appendChild(lab);
+  if(st){ const p=el("span","pill "+st.cls); p.appendChild(el("i","dot")); p.appendChild(el("span",null,st.txt)); w.appendChild(p); }
+  return w;
+}
+function td(txt,c){ return el("td",c,txt); }
+
+/* ---------- DAILY ---------- */
+function todayISO(){ const d=new Date(); return dISO(new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()))); }
+function dailyRows(){
+  const date=$("#dDate").value; if(!date) return [];
+  const m=$("#dMachine").value, q=$("#dSearch").value.trim().toLocaleLowerCase("tr"), all=$("#dAll").checked;
+  const from=addDays(date,-45), to=addDays(date,45);
+  return S.orders.filter(o=>{
+    if(m && o.makine!==m) return false;
+    if(q && (o.ie+" "+o.kod+" "+o.urun).toLocaleLowerCase("tr").indexOf(q)<0) return false;
+    if(all||q) return true;
+    if(o.days[date]!=null) return true;
+    for(const k in o.days){ if(k>=from && k<=to && n0(o.days[k])) return true; }
+    return false;
+  });
+}
+function renderDaily(){
+  const date=$("#dDate").value;
+  const list=dailyRows();
+  $("#dCount").textContent = fmt(list.length)+" iş emri listeleniyor";
+  let dayTotal=0, dayHours=0, entered=0;
+  const tb=$("#dBody"); tb.innerHTML="";
+  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=7; tr.appendChild(c); tb.appendChild(tr); }
+  const frag=document.createDocumentFragment();
+  list.forEach(o=>{
+    const c=calc(o), v=n0(o.days[date]);
+    if(v){ dayTotal+=v; entered++; if(c.Q) dayHours+=v/c.Q; }
+    const tr=el("tr");
+    const a=el("td"); const lk=el("button","btn sm"); lk.textContent=o.ie; lk.addEventListener("click",()=>focusOrder(o.ie)); a.appendChild(lk); tr.appendChild(a);
+    const p=el("td"); p.appendChild(el("span","strong",o.urun||"—")); p.appendChild(el("span","sub",o.kod||"")); tr.appendChild(p);
+    tr.appendChild(td(machineLabel(o.makine)));
+    const inTd=el("td","r");
+    const inp=el("input"); inp.type="text"; inp.className="mono"; inp.style.width="130px"; inp.style.textAlign="right";
+    inp.value = dayExp(o,date) || (o.days[date]!=null ? o.days[date] : "");
+    inp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" üretim adedi; vardiyaları artı ile toplayabilirsin");
+    inp.title="Vardiyaları artı ile yazabilirsin: 12000+13500+11000";
+    inp.addEventListener("input", ()=>{ setDay(o, date, inp.value); renderDailyTotals(); });
+    inp.addEventListener("change", ()=>{ renderDaily(); });
+    inTd.appendChild(inp); tr.appendChild(inTd);
+    tr.appendChild(td(v&&c.Q?fmt2(v/c.Q):"—","r mono"));
+    tr.appendChild(td(fmt(c.J),"r mono"));
+    const mt=el("td"); mt.appendChild(meter(c.pct,null)); tr.appendChild(mt);
+    frag.appendChild(tr);
+  });
+  tb.appendChild(frag);
+  const k=$("#dKpis"); k.innerHTML="";
+  k.appendChild(kpi("Tarih", trDate(date), gunAdi(date)));
+  k.appendChild(kpi("Bu gün üretilen", fmt(dayTotal), "adet"));
+  k.appendChild(kpi("Toplam çalışma", fmt2(dayHours), "saat (gerçekleşen kapasiteye göre)"));
+  k.appendChild(kpi("Girdi yapılan iş emri", fmt(entered), "adet"));
+}
+function renderDailyTotals(){
+  const date=$("#dDate").value; let t=0,h=0,e=0;
+  S.orders.forEach(o=>{ const v=n0(o.days[date]); if(v){ const c=calc(o); t+=v; e++; if(c.Q) h+=v/c.Q; } });
+  const k=$("#dKpis");
+  if(k.children[1]) k.children[1].querySelector(".val").textContent=fmt(t);
+  if(k.children[2]) k.children[2].querySelector(".val").textContent=fmt2(h);
+  if(k.children[3]) k.children[3].querySelector(".val").textContent=fmt(e);
+}
+function gunAdi(iso){ const w=(parseISO(iso).getUTCDay()+6)%7; return ["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"][w]; }
+function kpi(label,val,foot){
+  const d=el("div","kpi"); d.appendChild(el("div","eyebrow",label)); d.appendChild(el("div","val",val));
+  if(foot) d.appendChild(el("div","foot",foot));
+  return d;
+}
+function dayExp(o,date){ return o.exp && o.exp[date] ? o.exp[date] : ""; }
+function clearDay(o,date){ delete o.days[date]; if(o.exp) delete o.exp[date]; }
+/* Hücreye yazılanı çözer; artılı yazıldıysa hem toplamı hem yazılışı saklar. */
+function setDay(o,date,text){
+  const t=String(text==null?"":text).trim();
+  if(!t){ clearDay(o,date); saveOrder(o); return; }
+  const v=parseNum(t);
+  if(v==null) return;
+  if(!v){ clearDay(o,date); saveOrder(o); return; }
+  o.days[date]=v;
+  if(isSum(t)){ o.exp=o.exp||{}; o.exp[date]=t.replace(/^=/,"").replace(/\s/g,""); }
+  else if(o.exp) delete o.exp[date];
+  saveOrder(o);
+}
+$("#dPrev").addEventListener("click",()=>{ $("#dDate").value=addDays($("#dDate").value,-1); renderDaily(); });
+$("#dNext").addEventListener("click",()=>{ $("#dDate").value=addDays($("#dDate").value,1); renderDaily(); });
+$("#dToday").addEventListener("click",()=>{ $("#dDate").value=todayISO(); renderDaily(); });
+["#dDate","#dMachine","#dSearch","#dAll"].forEach(s=>$(s).addEventListener("input",renderDaily));
+
+/* ---------- SUMMARY ---------- */
+function fullRange(){ return {from:firstDay()||todayISO(), to:lastDataDay()}; }
+function range(){ const f=fullRange(); return {from:$("#sFrom").value||f.from, to:$("#sTo").value||f.to}; }
+function renderSummary(){
+  const {from,to}=range();
+  $("#sRange").textContent = trDate(from)+" – "+trDate(to);
+  let plan=0, J=0, hours=0, fire=0, active=0, done=0, devSum=0, devN=0;
+  const byMachine={}, byProduct={}, byWeek={};
+  S.orders.forEach(o=>{
+    const c=calc(o);
+    let inRange=0;
+    for(const k in o.days){ if(k>=from&&k<=to){ const v=n0(o.days[k]); if(v){ inRange+=v; const w=weekStart(k); byWeek[w]=(byWeek[w]||0)+v; } } }
+    if(!inRange) return;
+    plan+=n0(o.plan); J+=inRange;
+    const h = c.Q ? inRange/c.Q : 0; hours+=h;
+    fire+=c.V;
+    if(n0(o.plan) && c.J>=n0(o.plan)) done++; else active++;
+    if(c.M){ devSum+=c.M; devN++; } else devN++;
+    const mk=o.makine||"";
+    const m = byMachine[mk] || (byMachine[mk]={n:0,q:0,h:0,dev:0,devN:0});
+    m.n++; m.q+=inRange; m.h+=h; m.dev+=c.M; m.devN++;
+    const pk=o.kod||"—";
+    const p = byProduct[pk] || (byProduct[pk]={n:0,q:0,fire:0,ad:o.urun});
+    p.n++; p.q+=inRange; p.fire+=c.V;
+  });
+  const k=$("#sKpis"); k.innerHTML="";
+  k.appendChild(kpi("Hareketli iş emri", fmt(active+done), (done?fmt(done)+" tamamlandı · ":"")+fmt(active)+" devam ediyor"));
+  k.appendChild(kpi("Gerçekleşen üretim", fmt(J), "adet"));
+  k.appendChild(kpi("Gerçekleşen çalışma", fmt(hours), "saat"));
+  k.appendChild(kpi("Ortalama sapma", devN?pctS(devSum/devN):"—", "planlanan çalışma saatine göre"));
+  k.appendChild(kpi("Hammadde firesi", fmt2(fire), "kg"));
+  drawWeekly(byWeek);
+  const mb=$("#mBody"); mb.innerHTML="";
+  const ms=Object.entries(byMachine).sort((a,b)=>b[1].h-a[1].h);
+  const maxH = ms.length ? ms[0][1].h : 0;
+  if(!ms.length){ const tr=el("tr"); const c=el("td","empty","Seçili dönemde üretim kaydı yok."); c.colSpan=6; tr.appendChild(c); mb.appendChild(tr); }
+  ms.forEach(([name,m])=>{
+    const tr=el("tr");
+    tr.appendChild(td(machineLabel(name),"strong"));
+    tr.appendChild(td(fmt(m.n),"r mono"));
+    tr.appendChild(td(fmt(m.q),"r mono"));
+    tr.appendChild(td(fmt1(m.h),"r mono strong"));
+    const b=el("td"); b.appendChild(meter(maxH?m.h/maxH:0,null)); tr.appendChild(b);
+    const d=el("td","r"); const pl=el("span","pill "+devClass(m.dev/m.devN)); pl.appendChild(el("i","dot")); pl.appendChild(el("span",null,pctS(m.dev/m.devN))); d.appendChild(pl); tr.appendChild(d);
+    mb.appendChild(tr);
+  });
+  const pb=$("#pBody"); pb.innerHTML="";
+  const ps=Object.entries(byProduct).sort((a,b)=>b[1].q-a[1].q).slice(0,15);
+  const maxQ = ps.length?ps[0][1].q:0;
+  if(!ps.length){ const tr=el("tr"); const c=el("td","empty","Seçili dönemde üretim kaydı yok."); c.colSpan=6; tr.appendChild(c); pb.appendChild(tr); }
+  ps.forEach(([kod,p])=>{
+    const tr=el("tr");
+    tr.appendChild(td(kod,"mono"));
+    tr.appendChild(td(p.ad||"—","strong"));
+    tr.appendChild(td(fmt(p.n),"r mono"));
+    tr.appendChild(td(fmt(p.q),"r mono strong"));
+    const b=el("td"); b.appendChild(meter(maxQ?p.q/maxQ:0,null)); tr.appendChild(b);
+    tr.appendChild(td(p.fire?fmt2(p.fire):"—","r mono"));
+    pb.appendChild(tr);
+  });
+}
+function drawWeekly(byWeek){
+  const svg=$("#wkChart"), tip=$("#wkTip");
+  const weeks=Object.keys(byWeek).sort();
+  svg.innerHTML="";
+  const tbl=$("#wkTable"); tbl.innerHTML="";
+  if(!weeks.length){ svg.innerHTML='<text x="10" y="30" class="axis">Seçili dönemde üretim kaydı yok.</text>'; return; }
+  const W=1000, H=210, padL=54, padR=8, padT=12, padB=26;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  const max=Math.max.apply(null, weeks.map(w=>byWeek[w]));
+  const step=(W-padL-padR)/weeks.length;
+  const bw=Math.max(2, step-2);
+  const ns="http://www.w3.org/2000/svg";
+  function mk(t,a){ const n=document.createElementNS(ns,t); for(const k in a) n.setAttribute(k,a[k]); return n; }
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const y=padT+(H-padT-padB)*(1-i/ticks);
+    svg.appendChild(mk("line",{x1:padL,x2:W-padR,y1:y,y2:y,class:"grid"}));
+    const t=mk("text",{x:padL-7,y:y+3,class:"axis","text-anchor":"end"}); t.textContent=compact(max*i/ticks); svg.appendChild(t);
+  }
+  weeks.forEach((w,i)=>{
+    const h=(H-padT-padB)*(byWeek[w]/max);
+    const x=padL+i*step, y=H-padB-h;
+    const g=mk("g",{class:"col"});
+    g.appendChild(mk("rect",{class:"bar",x:x,y:y,width:bw,height:Math.max(h,1),rx:2}));
+    const hit=mk("rect",{class:"hit",x:x,y:padT,width:bw,height:H-padT-padB});
+    g.appendChild(hit);
+    g.addEventListener("mousemove",e=>{
+      const r=$("#wkWrap").getBoundingClientRect();
+      tip.innerHTML = trDate(w)+" haftası<br><b>"+fmt(byWeek[w])+"</b> adet";
+      tip.style.opacity="1";
+      tip.style.left=Math.min(r.width-150, Math.max(0,e.clientX-r.left+12))+"px";
+      tip.style.top=(e.clientY-r.top-46)+"px";
+    });
+    g.addEventListener("mouseleave",()=>{ tip.style.opacity="0"; });
+    svg.appendChild(g);
+    if(i%Math.ceil(weeks.length/12)===0){
+      const t=mk("text",{x:x+bw/2,y:H-8,class:"axis","text-anchor":"middle"}); t.textContent=shortDate(w); svg.appendChild(t);
+    }
+  });
+  const t=el("table"); const th=el("thead"); const hr=el("tr");
+  ["Hafta başı","Üretim (adet)"].forEach((h,i)=>{ const c=el("th",i?"r":null,h); hr.appendChild(c); });
+  th.appendChild(hr); t.appendChild(th);
+  const tb=el("tbody");
+  weeks.forEach(w=>{ const tr=el("tr"); tr.appendChild(td(trDate(w))); tr.appendChild(td(fmt(byWeek[w]),"r mono")); tb.appendChild(tr); });
+  t.appendChild(tb); tbl.appendChild(t);
+}
+function compact(v){ v=Math.round(v); if(v>=1e6) return nf1.format(v/1e6)+"M"; if(v>=1e3) return nf.format(Math.round(v/1e3))+"B"; return nf.format(v); }
+["#sFrom","#sTo"].forEach(s=>$(s).addEventListener("input",renderSummary));
+$("#sAll").addEventListener("click",()=>{ const f=fullRange(); $("#sFrom").value=f.from; $("#sTo").value=f.to; renderSummary(); });
+
+/* ---------- PRODUCTS ---------- */
+/* Ürün başına teorik kapasite: 24 saat kesintisiz, 3 vardiya, %100 verim varsayımı. */
+function verim(p){
+  const c=n0(p.cevrim), g=n0(p.goz);
+  if(!c||!g) return {saat:0,vardiya:0,gun:0,cevrimGun:0};
+  const saat=3600/c*g;
+  return {saat:saat, vardiya:saat*8, gun:saat*24, cevrimGun:86400/c};
+}
+function renderProducts(){
+  const q=$("#prSearch").value.trim().toLocaleLowerCase("tr");
+  const use={}; S.orders.forEach(o=>{ use[o.kod]=(use[o.kod]||0)+1; });
+  const list=S.products.filter(p=>!q||(p.kod+" "+p.ad).toLocaleLowerCase("tr").indexOf(q)>=0);
+  $("#prCount").textContent=fmt(list.length)+" ürün";
+  const tb=$("#prBody"); tb.innerHTML="";
+  const frag=document.createDocumentFragment();
+  list.forEach(p=>{
+    const tr=el("tr");
+    tr.appendChild(cellInput(p,"kod","text",null,()=>{renderOrders();}));
+    tr.appendChild(cellInput(p,"ad","text"));
+    tr.appendChild(cellInput(p,"cevrim","number","r",()=>renderProducts()));
+    tr.appendChild(cellInput(p,"goz","number","r",()=>renderProducts()));
+    tr.appendChild(cellInput(p,"net","number","r"));
+    tr.appendChild(cellInput(p,"gramaj","number","r"));
+    const v=verim(p);
+    tr.appendChild(td(v.saat?fmt(v.saat):"—","r mono strong"));
+    tr.appendChild(td(v.vardiya?fmt(v.vardiya):"—","r mono"));
+    tr.appendChild(td(v.gun?fmt(v.gun):"—","r mono"));
+    tr.appendChild(td(fmt(use[p.kod]||0),"r mono"));
+    const a=el("td","r");
+    const del=el("button","btn sm danger","Sil");
+    del.addEventListener("click",()=>{
+      if(use[p.kod]){ toast("Bu ürüne bağlı "+use[p.kod]+" iş emri var, silinemez"); return; }
+      removeProduct(p); renderProducts();
+    });
+    a.appendChild(del); tr.appendChild(a);
+    frag.appendChild(tr);
+  });
+  tb.appendChild(frag);
+ 
+}
+function cellInput(obj,key,type,cls,after,saver){
+  const c=el("td",cls);
+  const i=el("input"); i.type=type; if(type==="number"){ i.step="any"; i.className="mono"; i.style.textAlign="right"; }
+  i.style.width="100%"; i.value = obj[key]==null?"":obj[key];
+  i.addEventListener("input",()=>{ obj[key] = type==="number" ? (i.value===""?null:Number(i.value)) : i.value; (saver||saveProduct)(obj); if(after)after(); });
+  c.appendChild(i); return c;
+}
+$("#prSearch").addEventListener("input",renderProducts);
+/* Verim dosyasındaki çevrim, göz ve gramaj değerlerini mevcut listeye işler; iş emirlerine dokunmaz. */
+$("#btnSyncProducts").addEventListener("click",()=>openPanel("sync",d=>{
+  d.appendChild(el("h3",null,"Ürün listesini dosyadan yenile"));
+  d.appendChild(el("p","hint","Ürün Bazlı Günlük Verim Hesabı dosyasındaki çevrim süresi, kalıp göz sayısı ve gramajlar listeye işlenir. Dosyada olmayan ürünlerin ve iş emirlerinin hiçbirine dokunulmaz."));
+  const row=el("div","row");
+  const go=el("button","btn primary","Yenile");
+  go.addEventListener("click",()=>{
+    const r=syncSeedProducts();
+    S.pver=SEED_VER; persistLocal();
+    closePanel(); render();
+    toast(syncMsg(r));
+  });
+  const cl=el("button","btn","Vazgeç");
+  cl.addEventListener("click",closePanel);
+  row.appendChild(go); row.appendChild(cl);
+  d.appendChild(row);
+}));
+/* ---------- MAKİNELER ---------- */
+function renderMachines(){
+  const q=$("#mcSearch").value.trim().toLocaleLowerCase("tr");
+  const use={}; S.orders.forEach(o=>{ if(o.makine) use[o.makine]=(use[o.makine]||0)+1; });
+  const list=S.machines.filter(m=>!q||((m.kod||"")+" "+(m.ad||"")+" "+(m.tip||"")).toLocaleLowerCase("tr").indexOf(q)>=0);
+  $("#mcCount").textContent=fmt(list.length)+" makine";
+  const tb=$("#mcBody"); tb.innerHTML="";
+  const frag=document.createDocumentFragment();
+  list.forEach(m=>{
+    const tr=el("tr");
+    tr.appendChild(cellInput(m,"kod","text",null,()=>{ fillMachineSelects(); },saveMachine));
+    tr.appendChild(cellInput(m,"ad","text",null,()=>{ fillMachineSelects(); },saveMachine));
+    tr.appendChild(cellInput(m,"tip","text",null,()=>{ fillMachineSelects(); },saveMachine));
+    tr.appendChild(td(fmt(use[m.kod]||0),"r mono"));
+    const a=el("td","r");
+    const del=el("button","btn sm danger","Sil");
+    del.addEventListener("click",()=>{
+      if(use[m.kod]){ toast("Bu makineye bağlı "+use[m.kod]+" iş emri var, silinemez"); return; }
+      removeMachine(m); fillMachineSelects(); renderMachines();
+    });
+    a.appendChild(del); tr.appendChild(a);
+    frag.appendChild(tr);
+  });
+  tb.appendChild(frag);
+}
+$("#mcSearch").addEventListener("input",renderMachines);
+$("#btnNewMachine").addEventListener("click",()=>{
+  const m={_id:newId(),kod:"",ad:"",tip:""};
+  S.machines.push(m); saveMachine(m); $("#mcSearch").value=""; renderMachines();
+  const rows=$("#mcBody").querySelectorAll("tr"); const last=rows[rows.length-1];
+  if(last){ const f=last.querySelector("input"); if(f){ f.focus(); f.scrollIntoView({block:"nearest"}); } }
+});
+$("#btnNewProduct").addEventListener("click",()=>{
+  const p={_id:newId(),kod:"",ad:"",cevrim:null,goz:null,net:null,gramaj:null};
+  S.products.push(p); saveProduct(p); $("#prSearch").value=""; renderProducts();
+  const rows=$("#prBody").querySelectorAll("tr"); const last=rows[rows.length-1];
+  if(last){ const f=last.querySelector("input"); if(f){ f.focus(); f.scrollIntoView({block:"nearest"}); } }
+});
+
+/* ---------- confirm / export / import / reset ---------- */
+function askConfirm(msg,onYes){
+  const bar=$("#confirmBar"); bar.innerHTML="";
+  const d=el("div","confirm");
+  d.appendChild(el("span",null,msg));
+  d.appendChild(el("span","spacer"));
+  const y=el("button","btn sm danger","Evet, devam et");
+  const n=el("button","btn sm","Vazgeç");
+  y.addEventListener("click",()=>{ bar.innerHTML=""; onYes(); });
+  n.addEventListener("click",()=>{ bar.innerHTML=""; });
+  d.appendChild(y); d.appendChild(n); bar.appendChild(d);
+  if(bar.scrollIntoView) bar.scrollIntoView({block:"nearest"});
+}
+function openPanel(kind, build){
+  const box=$("#backupBox");
+  if(!box.hidden && box.dataset.kind===kind){ closePanel(); return; }
+  box.hidden=false; box.dataset.kind=kind; box.innerHTML="";
+  const d=el("div","panelbox");
+  build(d);
+  box.appendChild(d);
+  try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){}
+  return d;
+}
+function closePanel(){ const box=$("#backupBox"); box.hidden=true; box.innerHTML=""; box.dataset.kind=""; }
+async function toClipboard(text,okMsg){
+  try{ await navigator.clipboard.writeText(text); toast(okMsg); return true; }
+  catch(e){ toast("Panoya kopyalanamadı, metni elle seçip kopyala"); return false; }
+}
+$("#btnCopyExcel").addEventListener("click",()=>toClipboard(table("\t"), fmt(S.orders.length)+" iş emri panoya kopyalandı, Excel'e yapıştır"));
+function backupJSON(){
+  return JSON.stringify({
+    orders:S.orders.map(o=>{const c=Object.assign({},o); delete c._id; return c;}),
+    products:S.products.map(p=>{const c=Object.assign({},p); delete c._id; return c;}),
+    machines:S.machines.map(m=>{const c=Object.assign({},m); delete c._id; return c;})
+  });
+}
+$("#btnBackup").addEventListener("click",()=>openPanel("backup",d=>{
+  d.appendChild(el("h3",null,"Yedek al veya yükle"));
+  d.appendChild(el("p","hint","Aşağıdaki metin bütün verinin yedeği. Kopyalayıp bir dosyaya ya da e-postaya saklayabilir, başka bir bilgisayarda buraya yapıştırıp yükleyebilirsin."));
+  const ta=el("textarea"); ta.value=backupJSON(); ta.spellcheck=false;
+  ta.setAttribute("aria-label","Yedek metni");
+  d.appendChild(ta);
+  const row=el("div","row");
+  const cp=el("button","btn primary","Panoya kopyala");
+  cp.addEventListener("click",()=>toClipboard(ta.value,"Yedek panoya kopyalandı"));
+  const ld=el("button","btn","Bu metni yükle");
+  ld.addEventListener("click",()=>{
+    let pj;
+    try{ pj=JSON.parse(ta.value); }catch(err){ toast("Metin okunamadı: geçerli bir yedek değil"); return; }
+    if(!pj||!Array.isArray(pj.orders)){ toast("Yedekte iş emri listesi bulunamadı"); return; }
+    askConfirm("Yedekteki "+pj.orders.length+" iş emri, ekrandaki verinin yerine geçecek.",()=>{
+      closePanel();
+      replaceAll(pj.orders, Array.isArray(pj.products)?pj.products:S.products, Array.isArray(pj.machines)?pj.machines:S.machines, "Yedek yüklendi");
+    });
+  });
+  const cl=el("button","btn","Kapat");
+  cl.addEventListener("click",closePanel);
+  row.appendChild(cp); row.appendChild(ld); row.appendChild(cl);
+  d.appendChild(row);
+  setTimeout(()=>{ ta.focus(); ta.select(); },0);
+}));
+function table(sep){
+  const head=["İş Emri","Stok Kodu","Ürün","Çevrim Süresi","Gerçekleşen Çevrim","Kalıp Göz Sayısı","Çalışan Göz Sayısı","Makine",
+    "Planlanan Üretim","Gerçekleşen Üretim","Planlanan Çalışma Saati","Gerçekleşen Çalışma","Sapma Oranı","Fazla Çalışma",
+    "Arıza/Duruş","Teorik Saatlik Kapasite","Gerçekleşen Saatlik","Teorik 24 Saatlik","Gerçekleşen 24 Saatlik",
+    "Hatalı Üretim","Hammadde Firesi","Teorik Vardiya (8 sa)","Son Üretim"];
+  const dec=v=>String(v==null?"":v).replace(".",",");
+  const q=v=>String(v==null?"":v).replace(/[\t\r\n]/g," ");
+  const lines=[head.map(q).join(sep)];
+  S.orders.forEach(o=>{ const c=calc(o);
+    lines.push([o.ie,o.kod,o.urun,dec(o.cevrim),dec(o.gcevrim),dec(o.kgoz),dec(o.cgoz),machineLabel(o.makine),dec(o.plan),
+      dec(c.J),dec(c.K.toFixed(2)),dec(c.L.toFixed(2)),dec((c.M*100).toFixed(2)),dec(c.N.toFixed(2)),dec(o.durus),
+      dec(c.P.toFixed(2)),dec(c.Q.toFixed(2)),dec(c.R.toFixed(0)),dec(c.S.toFixed(0)),dec(o.hatali),dec(c.V.toFixed(3)),
+      dec(c.vardiya.toFixed(0)),c.son?trDate(c.son):""].map(q).join(sep));
+  });
+  return lines.join("\r\n");
+}
+function clearPanel(){ return openPanel("clear",d=>{
+  d.appendChild(el("h3",null,"Boşalt"));
+  d.appendChild(el("p","hint","Sütun başlıkları, hesaplamalar ve ekranlar aynı kalır; işaretlediğin listelerin içi boşalır."));
+  const opts=[["İş emirleri ve günlük üretim",true],["Ürün listesi",true],["Makine listesi",false]];
+  const boxes=opts.map(([lab,on])=>{
+    const l=el("label"); l.style.display="flex"; l.style.alignItems="center"; l.style.gap="8px"; l.style.fontSize="13px";
+    const cb=el("input"); cb.type="checkbox"; cb.checked=on;
+    l.appendChild(cb); l.appendChild(el("span",null,lab));
+    d.appendChild(l); return cb;
+  });
+  const row=el("div","row");
+  d.appendChild(el("p","hint","Geri almak istersen “Sıfırla” Excel'deki ilk hâline döndürür."));
+  const go=el("button","btn danger","Seçilenleri boşalt");
+  go.addEventListener("click",()=>{
+    const cO=boxes[0].checked, cP=boxes[1].checked, cM=boxes[2].checked;
+    if(!cO&&!cP&&!cM){ toast("Önce boşaltılacak listeyi işaretle"); return; }
+    closePanel();
+    replaceAll(cO?[]:S.orders, cP?[]:S.products, cM?[]:S.machines, "Boşaltıldı");
+  });
+  const cl=el("button","btn","Vazgeç");
+  cl.addEventListener("click",closePanel);
+  row.appendChild(go); row.appendChild(cl);
+  d.appendChild(row);
+}); }
+$("#btnClear").addEventListener("click",clearPanel);
+$("#btnClear2").addEventListener("click",clearPanel);
+$("#btnReset").addEventListener("click",()=>{
+  askConfirm("Bütün değişiklikler silinip Excel'den gelen ilk hâle dönülecek.",()=>{
+    const f=seedState();
+    replaceAll(f.orders, f.products, f.machines, "İlk hâline döndürüldü");
+  });
+});
+/* ---------- boot ---------- */
+function render(){
+  if(view==="orders") renderOrders();
+  else if(view==="daily") renderDaily();
+  else if(view==="summary") renderSummary();
+  else if(view==="machines") renderMachines();
+  else renderProducts();
+  paintBrand(); paintStatus();
+}
+fillMachineSelects();
+$("#dDate").value = SEED.bitis;
+$("#dDate").min = "2020-01-01";
+const _fr=fullRange(); $("#sFrom").value=_fr.from; $("#sTo").value=_fr.to;
+$("#buildTag").textContent="· sürüm "+BUILD+" · 2 Eylül 2026";
+setView("orders");
+boot();
+/* Sayfa gece boyunca açık kalırsa tarih kendiliğinden devreder. */
+let _bugun=todayISO();
+setInterval(function(){
+  const t=todayISO();
+  if(t===_bugun) return;
+  _bugun=t; paintBrand(); fillMonthSel();
+},60000);
+})();
+</script>
