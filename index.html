@@ -380,7 +380,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "33";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "34";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -471,12 +471,14 @@ window.addEventListener("beforeunload",writeLocal);
 document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="hidden") writeLocal(); });
 
 function newId(){ return "z"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function saveOrder(){ persistLocal(); }
-function saveProduct(){ persistLocal(); }
-function saveMachine(){ persistLocal(); }
-function removeOrder(o){ if(!canEdit()) return; const i=S.orders.indexOf(o); if(i>=0) S.orders.splice(i,1); persistLocal(); }
-function removeProduct(p){ if(!canEdit()) return; const i=S.products.indexOf(p); if(i>=0) S.products.splice(i,1); persistLocal(); }
-function removeMachine(m){ if(!canEdit()) return; const i=S.machines.indexOf(m); if(i>=0) S.machines.splice(i,1); persistLocal(); }
+/* Çakışma birleştirmesi için: bu cihazda hangi kayıtlara dokunuldu? */
+const touched=new Set(); const silinen=new Set(); let touchedP=false, touchedM=false, touchedAll=false;
+function saveOrder(o){ if(o&&o._id) touched.add(o._id); persistLocal(); }
+function saveProduct(){ touchedP=true; persistLocal(); }
+function saveMachine(){ touchedM=true; persistLocal(); }
+function removeOrder(o){ if(!canEdit()) return; const i=S.orders.indexOf(o); if(i>=0) S.orders.splice(i,1); if(o&&o._id) silinen.add(o._id); persistLocal(); }
+function removeProduct(p){ if(!canEdit()) return; touchedP=true; const i=S.products.indexOf(p); if(i>=0) S.products.splice(i,1); persistLocal(); }
+function removeMachine(m){ if(!canEdit()) return; touchedM=true; const i=S.machines.indexOf(m); if(i>=0) S.machines.splice(i,1); persistLocal(); }
 
 /* Gömülü ürün listesini kayıtlı listeye işler: eşleşenleri günceller, eksikleri ekler,
    elle eklenmiş ürünlere ve iş emirlerine dokunmaz. */
@@ -512,6 +514,7 @@ function replaceAll(orders,products,machines,msg){
   S.products=products.map((p,i)=>Object.assign({},p,{_id:"p"+String(i).padStart(3,"0")}));
   S.machines=(machines||[]).map((m,i)=>Object.assign({},m,{_id:"m"+String(i).padStart(2,"0")}));
   S.pver=SEED_VER;
+  touchedAll=true;
   stampMonths(S.orders);
   persistLocal(); fillMachineSelects(); render(); toast(msg);
 }
@@ -543,17 +546,45 @@ async function cloudPush(sessiz){
   let r;
   try{
     r=await fetch(CLOUD.url+"/rest/v1/rpc/kaydet",{method:"POST",headers:cloudHead(),
-      body:JSON.stringify({parola:writeKey,yeni:{orders:S.orders,products:S.products,machines:S.machines}})});
+      body:JSON.stringify({parola:writeKey,yeni:{orders:S.orders,products:S.products,machines:S.machines},beklenen:cloudStamp||null})});
   }catch(e){ cloudErr="yazma"; paintStatus(); retryPush(); if(!sessiz) toast("Buluta kaydedilemedi, bağlantıyı kontrol et"); return false; }
   if(!r.ok){
+    const govde=await r.text().catch(()=>"");
+    if(govde.indexOf("eskimis")>=0 && !birlestirmede){   /* başka bir cihaz araya girdi: birleştir, yeniden dene */
+      birlestirmede=true;
+      const iyi=await cloudMerge();
+      birlestirmede=false;
+      if(iyi) return cloudPush(sessiz);
+    }
     cloudErr = (r.status>=400&&r.status<500) ? "parola" : "yazma";
     paintStatus(); if(cloudErr==="yazma") retryPush();
     if(!sessiz) toast(cloudErr==="parola"?"Parola yanlış":"Buluta kaydedilemedi, bağlantıyı kontrol et");
     return false;
   }
   const row=await cloudRow("guncelleme").catch(()=>null); if(row) cloudStamp=row.guncelleme;
-  cloudErr=""; setDirty(false); paintStatus();
+  cloudErr=""; setDirty(false); touched.clear(); silinen.clear(); touchedP=false; touchedM=false; touchedAll=false;
+  paintStatus();
   if(!sessiz) toast("Buluta kaydedildi");
+  return true;
+}
+let birlestirmede=false;
+/* Çakışma: buluttaki hâli temel al, bu cihazda dokunulan kayıtları üzerine yaz.
+   Kimsenin girdiği kaybolmasın diye; dokunulmayan kayıtlarda buluttaki sürüm geçerli. */
+async function cloudMerge(){
+  let row;
+  try{ row=await cloudRow("veri,guncelleme"); }catch(e){ return false; }
+  if(!row) return false;
+  cloudStamp=row.guncelleme;
+  if(touchedAll) return true;                      /* yedek yükleme / boşaltma: bizimki bütünüyle geçerli */
+  const v=row.veri||{};
+  const harita=new Map((Array.isArray(v.orders)?v.orders:[]).map(o=>[o._id,o]));
+  S.orders.forEach(o=>{ if(touched.has(o._id)) harita.set(o._id,o); });
+  silinen.forEach(id=>harita.delete(id));
+  S.orders=Array.from(harita.values());
+  if(!touchedP && Array.isArray(v.products)) S.products=v.products;
+  if(!touchedM && Array.isArray(v.machines) && v.machines.length) S.machines=v.machines;
+  S.orders.forEach(o=>{ if(!o._id) o._id=newId(); if(!o.days) o.days={}; });
+  stampMonths(S.orders); writeLocal(); fillMachineSelects(); render();
   return true;
 }
 /* Kaydetme tutmazsa vazgeçme: bekleyen değişiklik kalmayana kadar 15 saniyede bir yeniden dene. */
@@ -591,6 +622,7 @@ async function cloudBoot(){
   try{
     const row=await cloudRow("veri,guncelleme"); if(!row) return;
     const v=row.veri||{}; cloudStamp=row.guncelleme;
+    if(dirty) touchedAll=true;      /* önceki oturumdan kalan değişiklik: bu cihazınki geçerli */
     const bulutBos=!(v.orders&&v.orders.length)&&!(v.products&&v.products.length);
     const yerelVar=!!(S.orders.length||S.products.length);
     if(writeKey && yerelVar && (dirty || bulutBos)){
@@ -1826,22 +1858,44 @@ $("#btnBackup").addEventListener("click",()=>openPanel("backup",d=>{
   const cp=el("button","btn primary","Panoya kopyala");
   cp.addEventListener("click",()=>toClipboard(ta.value,"Yedek panoya kopyalandı"));
   const ld=el("button","btn","Bu metni yükle");
-  ld.addEventListener("click",()=>{
-    let pj;
-    try{ pj=JSON.parse(ta.value); }catch(err){ toast("Metin okunamadı: geçerli bir yedek değil"); return; }
-    if(!pj||!Array.isArray(pj.orders)){ toast("Yedekte iş emri listesi bulunamadı"); return; }
-    if(!canEdit()){ toast(SALT); return; }
-    askConfirm("Yedekteki "+pj.orders.length+" iş emri, ekrandaki verinin yerine geçecek.",()=>{
-      closePanel();
-      replaceAll(pj.orders, Array.isArray(pj.products)?pj.products:S.products, Array.isArray(pj.machines)?pj.machines:S.machines, "Yedek yüklendi");
-    });
+  ld.addEventListener("click",()=>yedekYukle(ta.value));
+  const dl=el("button","btn","Dosyaya indir");
+  dl.addEventListener("click",()=>yedekIndir());
+  const up=el("button","btn","Dosyadan yükle");
+  const dosya=el("input"); dosya.type="file"; dosya.accept=".json,application/json"; dosya.hidden=true;
+  dosya.addEventListener("change",()=>{
+    const f=dosya.files&&dosya.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=()=>{ ta.value=String(fr.result||""); yedekYukle(ta.value); };
+    fr.onerror=()=>toast("Dosya okunamadı");
+    fr.readAsText(f); dosya.value="";
   });
+  up.addEventListener("click",()=>dosya.click());
   const cl=el("button","btn","Kapat");
   cl.addEventListener("click",closePanel);
-  row.appendChild(cp); row.appendChild(ld); row.appendChild(cl);
+  row.appendChild(cp); row.appendChild(dl); row.appendChild(up); row.appendChild(ld); row.appendChild(cl);
+  d.appendChild(dosya);
   d.appendChild(row);
   setTimeout(()=>{ ta.focus(); ta.select(); },0);
 }));
+function yedekYukle(metin){
+  let pj;
+  try{ pj=JSON.parse(metin); }catch(err){ toast("Metin okunamadı: geçerli bir yedek değil"); return; }
+  if(!pj||!Array.isArray(pj.orders)){ toast("Yedekte iş emri listesi bulunamadı"); return; }
+  if(!canEdit()){ toast(SALT); return; }
+  askConfirm("Yedekteki "+pj.orders.length+" iş emri, ekrandaki verinin yerine geçecek.",()=>{
+    closePanel();
+    replaceAll(pj.orders, Array.isArray(pj.products)?pj.products:S.products, Array.isArray(pj.machines)?pj.machines:S.machines, "Yedek yüklendi");
+  });
+}
+function yedekIndir(){
+  const ad="uretim-takip-yedek-"+todayISO()+".json";
+  const b=new Blob([backupJSON()],{type:"application/json"});
+  const u=URL.createObjectURL(b), a=el("a"); a.href=u; a.download=ad;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),4000);
+  toast("Yedek dosyası indirildi");
+}
 function table(sep){
   const head=["İş Emri","Stok Kodu","Ürün","Çevrim Süresi","Gerçekleşen Çevrim","Kalıp Göz Sayısı","Çalışan Göz Sayısı","Makine",
     "Planlanan Üretim","Gerçekleşen Üretim","Planlanan Çalışma Saati","Gerçekleşen Çalışma","Sapma Oranı","Fazla Çalışma",
