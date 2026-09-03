@@ -360,7 +360,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "23";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "24";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -717,7 +717,7 @@ function cellClass(col,o,c){
   else if(col.calc) cl.push("calc");
   if(col.type==="num"||col.type==="day"||col.calc) cl.push("num-c");
   if(col.c==="M"){ const m=n0(c.M); if(m>=0.20) cl.push("dev-crit"); else if(m>=0.05) cl.push("dev-warn"); }
-  if(col.k==="gcevrim"){ const t=n0(o.cevrim), g=n0(o.gcevrim); if(t>0&&g>t) cl.push("dev-crit"); }
+  if(col.k==="gcevrim"){ const t=n0(o.cevrim), g=n0(o.gcevrim); if(t>0&&g>t) cl.push(g>=t*1.10?"dev-crit":"dev-warn"); }
   return cl.join(" ");
 }
 function renderHead(){
