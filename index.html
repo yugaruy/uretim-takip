@@ -182,6 +182,20 @@ tr.kapali td{color:var(--muted)}
 .pie-leg .ad{flex:1;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pie-leg .adet{font-family:ui-monospace,Consolas,"SF Mono",monospace;color:var(--ink)}
 .pie-leg .pay{font-family:ui-monospace,Consolas,"SF Mono",monospace;color:var(--muted);width:46px;text-align:right}
+/* Makine çalışma oranı: her makine için küçük halka */
+.util{--calis:#217346;--durus:#c00000;--bos:#cfcfcf}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .util{--calis:#4caf7d;--durus:#f07070;--bos:#4a4a4a}}
+:root[data-theme="dark"] .util{--calis:#4caf7d;--durus:#f07070;--bos:#4a4a4a}
+.util-leg{display:flex;gap:16px;flex-wrap:wrap;padding:12px 15px 0;font-size:12.5px;color:var(--ink-2)}
+.util-leg span{display:inline-flex;align-items:center;gap:6px}
+.util-leg i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.util-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;padding:12px 15px 16px}
+.util-kart{text-align:center}
+.util-kart svg{width:104px;height:104px}
+.util-ad{font-size:12px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.util-sa{font-size:11px;color:var(--muted)}
+.util-mid{font:600 15px Calibri,"Segoe UI",sans-serif;fill:var(--ink)}
+.util-alt{font:10.5px Calibri,"Segoe UI",sans-serif;fill:var(--muted)}
 td.wknd{background:var(--surface-2)}
 table.grid tbody tr:hover td:not(.calc):not(.wk){background:var(--surface-2)}
 td.inrange{background:var(--accent-soft)!important}
@@ -376,6 +390,10 @@ td.editing{position:relative;padding:0}
       </div>
     </div>
     <div class="panel" style="margin-top:16px">
+      <div class="panel-head"><h2>Makine çalışma oranı</h2><p>Seçili dönemin takvim saatine göre çalışma, duruş ve boşta kalan süre</p></div>
+      <div class="viz" id="utilWrap"></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
       <div class="panel-head"><h2>Makine payı</h2><p>Seçili dönemde üretilen sağlam adedin makinelere dağılımı</p></div>
       <div class="pie-wrap viz" id="pieWrap"></div>
     </div>
@@ -435,7 +453,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "44";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "45";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -791,7 +809,18 @@ function calc(o){
   const pr = productBy(o.kod);
   const V = pr && pr.gramaj ? n0(pr.gramaj)*n0(o.hatali)/1000 : 0; // Hammadde firesi (kg)
   const pct = n0(o.plan) ? J/n0(o.plan) : 0;
-  return {P:P,Q:Q,J:J,T:T,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
+  /* Öngörü: planlanan adedin kalanı, kesintisiz 24 saatte kaç gün sürer;
+     geçmiş varsa son 10 üretim gününün ortalama hızıyla tahmini bitiş tarihi. */
+  const kalan = Math.max(n0(o.plan)-J, 0);
+  const kalanGun = (Q && kalan) ? kalan/(Q*24) : 0;
+  let hiz=0;
+  if(kalan){
+    const gunler=Object.keys(o.days).filter(k=>n0(o.days[k])).sort().slice(-10);
+    if(gunler.length) hiz = gunler.reduce((a,k)=>a+n0(o.days[k]),0)/gunler.length;
+  }
+  const hizGun = hiz ? kalan/hiz : 0;
+  const bitis = (o.kapali||!kalan) ? "" : addDays(todayISO(), Math.max(1,Math.ceil(hizGun||kalanGun||0)));
+  return {P:P,Q:Q,J:J,T:T,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
 }
 function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
 
@@ -850,6 +879,10 @@ const BASE_COLS=[
   {k:"plan", t:"Planlanan Üretim",   w:106, type:"num"},
   {c:"J",    t:"Gerçekleşen Üretim", w:106, calc:true},
   {c:"pct",  t:"Gerçekleşme",        w:104, calc:true, meter:true},
+  {c:"kalan",    t:"Kalan Adet",      w:86, calc:true},
+  {c:"kalanGun", t:"Kalan Gün (24 sa)", w:82, calc:true, dec:true},
+  {c:"hizGun",   t:"Bu Hızla Gün",    w:82, calc:true, dec:true},
+  {c:"bitis",    t:"Tahmini Bitiş",   w:92, calc:true, tarih:true},
   {c:"K",    t:"Planlanan Çalışma Saati", w:96, calc:true, dec:2},
   {c:"L",    t:"Gerçekleşen Çalışma",     w:96, calc:true, dec:2},
   {c:"M",    t:"Sapma Oranı",        w:82, calc:true, pct:true},
@@ -1016,6 +1049,7 @@ function cellText(o,col,c){
   if(col.weekly){ let s=0; for(let i=0;i<6;i++) s+=n0(o.days[addDays(col.week,i)]); return s? fmt2(c.Q? s/c.Q : 0) : ""; }
   if(col.type==="day"){ const v=o.days[col.date]; return v==null?"":fmt(v); }
   if(col.calc){
+    if(col.tarih) return c[col.c] ? trDate(c[col.c]) : "";
     const v=n0(c[col.c]);
     if(col.pct) return pctS(v);
     if(col.meter) return v? nf.format(Math.round(v*100))+"%" : "";
@@ -1576,6 +1610,49 @@ function drawPie(ms){
   });
   wrap.appendChild(leg);
 }
+/* Makine başına çalışma / duruş / boşta halkası.
+   Boşta = dönemin takvim saati (gün × 24) eksi çalışma ve duruş. */
+function drawUtil(byMachine, gun){
+  const wrap=$("#utilWrap"); wrap.innerHTML="";
+  const saat=gun*24;
+  const ms=Object.entries(byMachine).sort((a,b)=>b[1].h-a[1].h);
+  if(!ms.length||!saat){ wrap.appendChild(el("p","hint","Seçili dönemde üretim kaydı yok.")); return; }
+  wrap.classList.add("util");
+  const leg=el("div","util-leg");
+  [["Çalışma","var(--calis)"],["Duruş","var(--durus)"],["Boşta","var(--bos)"]].forEach(([ad,renk])=>{
+    const sp=el("span"); const i=el("i"); i.style.background=renk; sp.appendChild(i); sp.appendChild(el("span",null,ad)); leg.appendChild(sp);
+  });
+  wrap.appendChild(leg);
+  const g=el("div","util-grid");
+  const R=40, W=15, C=2*Math.PI*R;
+  ms.forEach(([kod,m])=>{
+    const calis=Math.min(m.h,saat);
+    const durus=Math.min(m.durus,Math.max(saat-calis,0));
+    const bos=Math.max(saat-calis-durus,0);
+    const kart=el("div","util-kart");
+    const svg=svgEl("svg",{viewBox:"0 0 100 100",role:"img","aria-label":machineLabel(kod)+" çalışma oranı"});
+    const gg=svgEl("g",{transform:"rotate(-90 50 50)"});
+    let off=0;
+    [[calis,"var(--calis)","Çalışma"],[durus,"var(--durus)","Duruş"],[bos,"var(--bos)","Boşta"]].forEach(([v,renk,ad])=>{
+      if(v<=0) return;
+      const uzn=C*v/saat;
+      const c=svgEl("circle",{cx:50,cy:50,r:R,fill:"none","stroke-width":W,
+        "stroke-dasharray":Math.max(uzn-1.5,0.4)+" "+(C-Math.max(uzn-1.5,0.4)),"stroke-dashoffset":-off});
+      c.style.stroke=renk;
+      const t=svgEl("title"); t.textContent=ad+": "+fmt1(v)+" saat ("+pctS(v/saat)+")"; c.appendChild(t);
+      gg.appendChild(c); off+=uzn;
+    });
+    svg.appendChild(gg);
+    const mid=svgEl("text",{x:50,y:50,"text-anchor":"middle",class:"util-mid"}); mid.textContent=pctS(calis/saat);
+    const alt=svgEl("text",{x:50,y:62,"text-anchor":"middle",class:"util-alt"}); alt.textContent="çalışma";
+    svg.appendChild(mid); svg.appendChild(alt);
+    kart.appendChild(svg);
+    kart.appendChild(el("div","util-ad",machineLabel(kod)));
+    kart.appendChild(el("div","util-sa",fmt1(calis)+" sa · duruş "+fmt1(durus)));
+    g.appendChild(kart);
+  });
+  wrap.appendChild(g);
+}
 function meter(pct,st){
   const w=el("div","meter");
   const tr=el("div","track"), f=el("div","fill");
@@ -1727,6 +1804,7 @@ function renderSummary(){
     mb.appendChild(tr);
   });
   drawPie(ms);
+  drawUtil(byMachine, Math.max(1, Math.round((parseISO(to)-parseISO(from))/86400000)+1));
   const pb=$("#pBody"); pb.innerHTML="";
   const ps=Object.entries(byProduct).sort((a,b)=>b[1].q-a[1].q).slice(0,15);
   const maxQ = ps.length?ps[0][1].q:0;
@@ -1980,7 +2058,7 @@ async function toClipboard(text,okMsg){
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
 /* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
-const PRINT_LABEL={kapali:"Durum",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+const PRINT_LABEL={kapali:"Durum",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",bitis:"Bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
   plan:"Plan. Üretim",J:"Gerç. Üretim",pct:"Gerç. %",K:"Plan. Saat",L:"Gerç. Saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Teorik/Saat",Q:"Gerç./Saat",vardiya:"Vardiya (8 sa)",
   R:"Teorik/24 sa",S:"Gerç./24 sa",hatali:"Hatalı",V:"Fire (kg)"};
