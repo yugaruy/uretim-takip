@@ -384,7 +384,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "40";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "41";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -668,6 +668,21 @@ async function surumKontrol(){
   }catch(e){}
 }
 const SALT="Bu sayfa görüntüleme içindir; veriyi yalnızca yetkili kişi değiştirebilir.";
+/* Yazma kapalıyken düzenleme denenirse geçici bildirim yetmiyor: kalıcı şerit gösterilir. */
+function saltUyar(){
+  const bar=$("#confirmBar");
+  if(bar.dataset.salt==="1") return;
+  bar.innerHTML=""; bar.dataset.salt="1";
+  const d=el("div","confirm");
+  d.appendChild(el("span",null,"Yazma kapalı — girdiklerin kaydedilmez. Veri girmek için parolayı gir."));
+  d.appendChild(el("span","spacer"));
+  const ac=el("button","btn sm primary","Düzenlemeyi aç");
+  ac.addEventListener("click",()=>{ bar.innerHTML=""; bar.dataset.salt=""; $("#btnEdit").click(); });
+  const kp=el("button","btn sm","Kapat");
+  kp.addEventListener("click",()=>{ bar.innerHTML=""; bar.dataset.salt=""; });
+  d.appendChild(ac); d.appendChild(kp); bar.appendChild(d);
+  try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){}
+}
 function applyReadonly(){
   const on=canEdit();
   ["#btnNew","#btnDelRow","#btnCloseOrder","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine"]
@@ -683,7 +698,7 @@ function paintStatus(){
     const hata = cloudErr==="okuma" ? " · buluta ulaşılamadı"
       : cloudErr==="yazma" ? " · kaydedilemedi, yeniden denenecek"
       : cloudErr==="parola" ? " · parola geçersiz" : "";
-    s.textContent = (writeKey?"Canlı kayıt · düzenleme açık":"Canlı kayıt · herkes görüyor")+hata+surum+" · sürüm "+BUILD;
+    s.textContent = (writeKey?"Canlı kayıt · düzenleme açık":"Canlı kayıt · YAZMA KAPALI")+hata+surum+" · sürüm "+BUILD;
     s.style.color = (cloudErr||yeniSurum) ? "var(--crit)" : "";
   } else {
     s.textContent = statusNote ? "Bu tarayıcıda kayıtlı · "+statusNote : "Bu tarayıcıda kayıtlı · sürüm "+BUILD;
@@ -1107,7 +1122,7 @@ function ensureVisible(){
   }
 }
 function startEdit(seedChar){
-  if(!canEdit()){ toast(SALT); return; }
+  if(!canEdit()){ saltUyar(); return; }
   const o=gridRows[sel.r], col=cols[sel.c];
   if(col&&col.type==="flag"){ toast("Bu sütun “İş emrini kapat” düğmesiyle değişir"); return; }
   if(!o||!col||col.calc){ if(col&&col.calc) toast("Bu sütun kendiliğinden hesaplanır"); return; }
@@ -1256,7 +1271,7 @@ function selRange(){
   return {r0:Math.min(sel.r,sel.ar), r1:Math.max(sel.r,sel.ar), c0:Math.min(sel.c,sel.ac), c1:Math.max(sel.c,sel.ac)};
 }
 function clearRange(){
-  if(!canEdit()){ toast(SALT); return; }
+  if(!canEdit()){ saltUyar(); return; }
   const g=selRange(); const hit=new Set();
   for(let r=g.r0;r<=g.r1;r++) for(let c=g.c0;c<=g.c1;c++){
     const col=cols[c]; if(col.calc) continue;
@@ -1268,7 +1283,7 @@ function clearRange(){
   if(hit.size){ hit.forEach(saveOrder); renderOrders(); }
 }
 function fillDown(){
-  if(!canEdit()){ toast(SALT); return; }
+  if(!canEdit()){ saltUyar(); return; }
   const g=selRange();
   if(g.r1<=g.r0){ toast("Önce doldurulacak satırları seç (Shift + aşağı ok)"); return; }
   const src=gridRows[g.r0], hit=new Set();
@@ -1304,7 +1319,7 @@ function copyRange(){
   return out.join("\n");
 }
 function pasteMatrix(text){
-  if(!canEdit()){ toast(SALT); return; }
+  if(!canEdit()){ saltUyar(); return; }
   const lines=text.replace(/\r/g,"").replace(/\n$/,"").split("\n").map(l=>l.split("\t"));
   const g=selRange();
   if(lines.length===1 && lines[0].length===1 && (g.r1>g.r0||g.c1>g.c0)){
@@ -1946,7 +1961,7 @@ function yedekYukle(metin){
   let pj;
   try{ pj=JSON.parse(metin); }catch(err){ toast("Metin okunamadı: geçerli bir yedek değil"); return; }
   if(!pj||!Array.isArray(pj.orders)){ toast("Yedekte iş emri listesi bulunamadı"); return; }
-  if(!canEdit()){ toast(SALT); return; }
+  if(!canEdit()){ saltUyar(); return; }
   askConfirm("Yedekteki "+pj.orders.length+" iş emri, ekrandaki verinin yerine geçecek.",()=>{
     closePanel();
     replaceAll(pj.orders, Array.isArray(pj.products)?pj.products:S.products, Array.isArray(pj.machines)?pj.machines:S.machines, "Yedek yüklendi");
