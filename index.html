@@ -118,6 +118,10 @@ svg.chart .axis{fill:var(--muted);font-size:9.5px;font-family:"IBM Plex Mono",mo
 svg.chart rect.bar{fill:var(--bar);rx:2}
 svg.chart rect.hit{fill:transparent;cursor:pointer}
 svg.chart g.col:hover rect.bar{fill:var(--ink)}
+svg.chart path.line{fill:none;stroke:var(--bar);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+svg.chart circle.pt{fill:var(--bar)}
+svg.chart circle.cur{fill:var(--bar);stroke:var(--surface);stroke-width:2}
+svg.chart line.cross{stroke:var(--line);stroke-width:1}
 .tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:7px;
   box-shadow:var(--shadow);padding:7px 10px;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5}
 .tip b{font-family:"IBM Plex Mono",monospace}
@@ -338,6 +342,13 @@ td.editing{position:relative;padding:0}
         </div>
       </div>
       <div class="panel">
+        <div class="panel-head"><h2>Günlük üretim</h2><p>Seçili dönemde gün gün girilen adet</p></div>
+        <div class="panel-body">
+          <div class="chart-wrap" id="dyWrap"><svg class="chart" id="dyChart" role="img" aria-label="Günlük üretim"></svg><div class="tip" id="dyTip"></div></div>
+          <details class="tbl"><summary>Tablo olarak göster</summary><div class="scroll" id="dyTable"></div></details>
+        </div>
+      </div>
+      <div class="panel">
         <div class="panel-head"><h2>Makine yükü</h2><p>Seçili dönemdeki çalışma, duruş ve verim</p></div>
         <div class="scroll"><table>
           <thead><tr><th>Makine</th><th class="r">İş emri</th><th class="r">Üretim</th><th class="r">Çalışma sa.</th><th class="r">Duruş sa.</th><th class="r">Hatalı</th><th class="r">Verim</th><th>Yük</th><th class="r">Ort. sapma</th></tr></thead>
@@ -405,7 +416,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "42";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "43";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1586,11 +1597,11 @@ function renderSummary(){
   const {from,to}=range();
   $("#sRange").textContent = trDate(from)+" – "+trDate(to);
   let plan=0, J=0, hours=0, fire=0, active=0, done=0, devSum=0, devN=0;
-  const byMachine={}, byProduct={}, byWeek={};
+  const byMachine={}, byProduct={}, byWeek={}, byDay={};
   S.orders.forEach(o=>{
     const c=calc(o);
     let inRange=0;
-    for(const k in o.days){ if(k>=from&&k<=to){ const v=n0(o.days[k]); if(v){ inRange+=v; const w=weekStart(k); byWeek[w]=(byWeek[w]||0)+v; } } }
+    for(const k in o.days){ if(k>=from&&k<=to){ const v=n0(o.days[k]); if(v){ inRange+=v; const w=weekStart(k); byWeek[w]=(byWeek[w]||0)+v; byDay[k]=(byDay[k]||0)+v; } } }
     if(!inRange) return;
     /* Hatalı adet iş emrinin tamamına ait; döneme düşen payı üretim oranıyla alınır ve sağlam adetten düşülür. */
     const pay = c.T ? inRange/c.T : 0;
@@ -1615,7 +1626,7 @@ function renderSummary(){
   k.appendChild(kpi("Gerçekleşen çalışma", fmt(hours), "saat"));
   k.appendChild(kpi("Ortalama sapma", devN?pctS(devSum/devN):"—", "planlanan çalışma saatine göre"));
   k.appendChild(kpi("Hammadde firesi", fmt2(fire), "kg"));
-  drawWeekly(byWeek);
+  drawWeekly(byWeek); drawDaily(byDay);
   const mb=$("#mBody"); mb.innerHTML="";
   const ms=Object.entries(byMachine).sort((a,b)=>b[1].h-a[1].h);
   const maxH = ms.length ? ms[0][1].h : 0;
@@ -1648,6 +1659,58 @@ function renderSummary(){
     tr.appendChild(td(p.fire?fmt2(p.fire):"—","r mono"));
     pb.appendChild(tr);
   });
+}
+/* Günlük üretim çizgisi: ilk ve son üretim günü arasındaki her takvim günü çizilir,
+   üretim girilmeyen gün sıfırdır — hafta sonu ve duruşlar çizgide görünsün diye. */
+function drawDaily(byDay){
+  const svg=$("#dyChart"), tip=$("#dyTip"), tbl=$("#dyTable");
+  svg.innerHTML=""; tbl.innerHTML="";
+  const gunler=Object.keys(byDay).sort();
+  if(!gunler.length){ svg.innerHTML='<text x="10" y="30" class="axis">Seçili dönemde üretim kaydı yok.</text>'; return; }
+  const dizi=[]; let g=gunler[0]; const son=gunler[gunler.length-1];
+  while(g<=son && dizi.length<1200){ dizi.push({d:g,v:n0(byDay[g])}); g=addDays(g,1); }
+  const W=1000,H=210,padL=54,padR=8,padT=12,padB=26;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  const ns="http://www.w3.org/2000/svg";
+  function mk(t,a){ const n=document.createElementNS(ns,t); for(const k in a) n.setAttribute(k,a[k]); return n; }
+  const max=Math.max.apply(null,dizi.map(x=>x.v))||1;
+  const ic=W-padL-padR, yuk=H-padT-padB;
+  const X=i=>padL+(dizi.length<2?ic/2:ic*i/(dizi.length-1));
+  const Y=v=>padT+yuk*(1-v/max);
+  for(let i=0;i<=4;i++){
+    const y=padT+yuk*(1-i/4);
+    svg.appendChild(mk("line",{x1:padL,x2:W-padR,y1:y,y2:y,class:"grid"}));
+    const t=mk("text",{x:padL-7,y:y+3,class:"axis","text-anchor":"end"}); t.textContent=compact(max*i/4); svg.appendChild(t);
+  }
+  svg.appendChild(mk("path",{class:"line",d:dizi.map((x,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(x.v).toFixed(1)).join(" ")}));
+  if(dizi.length<=45) dizi.forEach((x,i)=>svg.appendChild(mk("circle",{class:"pt",cx:X(i),cy:Y(x.v),r:3})));
+  const adim=Math.ceil(dizi.length/8);
+  dizi.forEach((x,i)=>{ if(i%adim===0){ const t=mk("text",{x:X(i),y:H-8,class:"axis","text-anchor":"middle"}); t.textContent=shortDate(x.d); svg.appendChild(t); } });
+  const cross=mk("line",{class:"cross",x1:0,x2:0,y1:padT,y2:H-padB,opacity:0});
+  const cur=mk("circle",{class:"cur",cx:0,cy:0,r:4.5,opacity:0});
+  svg.appendChild(cross); svg.appendChild(cur);
+  const hit=mk("rect",{x:padL,y:padT,width:ic,height:yuk,fill:"transparent"});
+  hit.addEventListener("mousemove",e=>{
+    const r=$("#dyWrap").getBoundingClientRect();
+    const oran=(e.clientX-r.left)/r.width*W;
+    let i=Math.round((oran-padL)/(ic/Math.max(dizi.length-1,1)));
+    i=Math.max(0,Math.min(dizi.length-1,i));
+    const x=X(i), y=Y(dizi[i].v);
+    cross.setAttribute("x1",x); cross.setAttribute("x2",x); cross.setAttribute("opacity",1);
+    cur.setAttribute("cx",x); cur.setAttribute("cy",y); cur.setAttribute("opacity",1);
+    tip.innerHTML=trDate(dizi[i].d)+" · "+gunAdi(dizi[i].d)+"<br><b>"+fmt(dizi[i].v)+"</b> adet";
+    tip.style.opacity="1";
+    tip.style.left=Math.min(r.width-150,Math.max(0,e.clientX-r.left+12))+"px";
+    tip.style.top=(e.clientY-r.top-46)+"px";
+  });
+  hit.addEventListener("mouseleave",()=>{ tip.style.opacity="0"; cross.setAttribute("opacity",0); cur.setAttribute("opacity",0); });
+  svg.appendChild(hit);
+  const t=el("table"), th=el("thead"), hr=el("tr");
+  ["Gün","Üretim (adet)"].forEach((h,i)=>hr.appendChild(el("th",i?"r":null,h)));
+  th.appendChild(hr); t.appendChild(th);
+  const tb=el("tbody");
+  dizi.forEach(x=>{ if(!x.v) return; const tr=el("tr"); tr.appendChild(td(trDate(x.d)+" · "+gunAdi(x.d))); tr.appendChild(td(fmt(x.v),"r mono")); tb.appendChild(tr); });
+  t.appendChild(tb); tbl.appendChild(t);
 }
 function drawWeekly(byWeek){
   const svg=$("#wkChart"), tip=$("#wkTip");
