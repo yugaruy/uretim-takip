@@ -128,6 +128,9 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight
 details.tbl summary:hover{color:var(--ink)}
 
 /* Excel'deki formül çubuğu */
+.rapor-bas{margin:0 0 12px}
+.rapor-bas h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
+.rapor-bas p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
 .fbar{display:flex;align-items:center;margin-bottom:6px;border:1px solid var(--line);border-radius:4px;
   background:var(--surface);overflow:hidden}
 .fbar .fadr{min-width:96px;padding:5px 9px;font:12.5px ui-monospace,Consolas,"SF Mono",monospace;color:var(--ink-2);
@@ -255,6 +258,10 @@ td.editing{position:relative;padding:0}
   #printArea td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
   #printArea thead{display:table-header-group}
   #printArea tr{break-inside:avoid}
+  #printArea .pkpi{margin-top:6mm;break-inside:avoid}
+  #printArea .pkpi h2{font:600 11px Calibri,"Segoe UI",sans-serif;margin:0 0 1.5mm}
+  #printArea .pkpi table{width:auto;min-width:70mm}
+  #printArea .pkpi td{border:0;padding:1px 10px 1px 0;font-size:9px}
 }
 </style>
 
@@ -332,6 +339,10 @@ td.editing{position:relative;padding:0}
 
   <!-- DAILY -->
   <section class="view" id="view-daily" hidden>
+    <div class="rapor-bas">
+      <h2>Günlük Üretim Performans Raporu</h2>
+      <p id="dBaslikTarih"></p>
+    </div>
     <div class="toolbar">
       <button class="btn sm" id="dPrev">‹ Önceki gün</button>
       <input type="date" id="dDate">
@@ -457,7 +468,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "46";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "47";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1734,6 +1745,7 @@ function renderDaily(){
     frag.appendChild(tr);
   });
   tb.appendChild(frag);
+  $("#dBaslikTarih").textContent = "Tarih: "+trDate(date)+" · "+gunAdi(date);
   const k=$("#dKpis"); k.innerHTML="";
   k.appendChild(kpi("Tarih", trDate(date), gunAdi(date)));
   k.appendChild(kpi("Günlük teorik üretim", fmt(Math.round(teorikTop)), "adet · kalıp göz ve teorik çevrimle 24 saat"));
@@ -2091,6 +2103,45 @@ const PRINT_LABEL={kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim p
   plan:"Plan. Üretim",J:"Gerç. Üretim",pct:"Gerç. %",K:"Plan. Saat",L:"Gerç. Saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Teorik/Saat",Q:"Gerç./Saat",vardiya:"Vardiya (8 sa)",
   R:"Teorik/24 sa",S:"Gerç./24 sa",hatali:"Hatalı",V:"Fire (kg)"};
+/* Günlük performans raporunun çıktısı: ekrandaki tablonun aynısı, girdi kutuları düz metne çevrilir. */
+function buildPrintDaily(){
+  const area=$("#printArea"); area.innerHTML="";
+  const date=$("#dDate").value;
+  area.appendChild(el("h1",null,"Günlük Üretim Performans Raporu"));
+  area.appendChild(el("p","pmeta","Tarih: "+trDate(date)+" · "+gunAdi(date)+" · "+$("#dCount").textContent));
+  const paylar=[92,150,108,58,58,58,70,70,86,74,66,78,78,64];
+  const top=paylar.reduce((a,b)=>a+b,0);
+  const t=el("table"), cg=el("colgroup"), thead=el("thead"), htr=el("tr"), tb=el("tbody");
+  paylar.forEach(w=>{ const c=document.createElement("col"); c.style.width=(w/top*100).toFixed(3)+"%"; cg.appendChild(c); });
+  t.appendChild(cg);
+  const basliklar=Array.prototype.map.call($("#view-daily thead").querySelectorAll("th"),x=>x.textContent);
+  basliklar.forEach((b,i)=>htr.appendChild(el("th",i>2?"r":null,b)));
+  thead.appendChild(htr); t.appendChild(thead);
+  Array.prototype.forEach.call($("#dBody").children,tr=>{
+    if(tr.querySelector("td.empty")) return;
+    const ntr=el("tr");
+    Array.prototype.forEach.call(tr.children,(cell,i)=>{
+      const inp=cell.querySelector("input");
+      let v = inp ? (inp.value.trim() || (i===13?"Yok":"")) : cell.textContent.trim();
+      if(i===1){ const st=cell.querySelector(".strong"), sb=cell.querySelector(".sub");
+        v=(st?st.textContent:"")+(sb&&sb.textContent?" ("+sb.textContent+")":""); }
+      ntr.appendChild(el("td",i>2?"r":null,v));
+    });
+    tb.appendChild(ntr);
+  });
+  t.appendChild(tb); area.appendChild(t);
+  const kb=el("div","pkpi");
+  kb.appendChild(el("h2",null,"Fabrika Genel KPI"));
+  const kt=el("table");
+  const ktb=el("tbody");
+  Array.prototype.forEach.call($("#dKpis").children,x=>{
+    const ad=x.querySelector(".eyebrow"), deg=x.querySelector(".val");
+    if(!ad||!deg) return;
+    const tr=el("tr"); tr.appendChild(el("td",null,ad.textContent)); tr.appendChild(el("td","r",deg.textContent));
+    ktb.appendChild(tr);
+  });
+  kt.appendChild(ktb); kb.appendChild(kt); area.appendChild(kb);
+}
 function buildPrint(){
   const area=$("#printArea"); area.innerHTML="";
   area.appendChild(el("h1",null,"Üretim Takip · İş Emirleri"));
@@ -2142,6 +2193,11 @@ $("#btnEdit").addEventListener("click",()=>{
   });
 });
 $("#btnPrint").addEventListener("click",()=>{
+  if(view==="daily"){
+    renderDaily();
+    if(!$("#dBody").querySelector("tr")){ toast("Bu günde yazdırılacak kayıt yok"); return; }
+    buildPrintDaily(); window.print(); return;
+  }
   if(view!=="orders") setView("orders");
   renderOrders();
   if(!gridRows.length){ toast("Bu ayda yazdırılacak iş emri yok"); return; }
