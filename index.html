@@ -384,7 +384,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "39";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "40";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -571,7 +571,7 @@ async function cloudPush(sessiz){
       birlestirmede=false;
       if(iyi) return cloudPush(sessiz);
     }
-    cloudErr = (r.status>=400&&r.status<500) ? "parola" : "yazma";
+    cloudErr = govde.indexOf("yetkisiz")>=0 ? "parola" : "yazma";
     paintStatus(); if(cloudErr==="yazma") retryPush();
     if(!sessiz) toast(cloudErr==="parola"?"Parola yanlış":"Buluta kaydedilemedi, bağlantıyı kontrol et");
     return false;
@@ -611,8 +611,10 @@ const cloudSave=debounce(()=>{ cloudPush(true); },1500);
 async function cloudTryKey(k){
   try{
     const r=await fetch(CLOUD.url+"/rest/v1/rpc/kaydet",{method:"POST",headers:cloudHead(),
-      body:JSON.stringify({parola:k,yeni:{orders:S.orders,products:S.products,machines:S.machines}})});
-    return r.ok?"ok":"parola";
+      body:JSON.stringify({parola:k,yeni:{orders:S.orders,products:S.products,machines:S.machines},beklenen:null})});
+    if(r.ok) return "ok";
+    const govde=await r.text().catch(()=>"");
+    return govde.indexOf("yetkisiz")>=0 ? "parola" : "sunucu";
   }catch(e){ return "ag"; }
 }
 /* Başkası kaydettiyse çek. Kendi yazımız bekliyorsa ya da hücre düzenleniyorsa dokunma. */
@@ -651,6 +653,7 @@ async function cloudBoot(){
     if(writeKey){                                /* parola geçerli mi, veri girmeye başlamadan anlaşılsın */
       const sonuc=await cloudTryKey(writeKey);
       if(sonuc==="parola"){ keyOff("Parola geçersiz, düzenleme kapatıldı"); return; }
+      if(sonuc==="sunucu"){ cloudErr="yazma"; paintStatus(); return; }
       if(sonuc==="ok"){ const t=await cloudRow("guncelleme").catch(()=>null); if(t) cloudStamp=t.guncelleme; }
     }
     cloudErr=""; paintStatus();
@@ -1791,6 +1794,7 @@ $("#btnEdit").addEventListener("click",()=>{
       const sonuc=await cloudTryKey(k);
       ok.disabled=false;
       if(sonuc==="ag"){ toast("Buluta kaydedilemedi, bağlantıyı kontrol et"); return; }
+      if(sonuc==="sunucu"){ toast("Sunucu yanıt vermedi, tekrar dene"); return; }
       if(sonuc==="parola"){ toast("Parola yanlış"); inp.select(); return; }
       writeKey=k; try{ localStorage.setItem(PKEY,k); }catch(e){}
       const t=await cloudRow("guncelleme").catch(()=>null); if(t) cloudStamp=t.guncelleme;
