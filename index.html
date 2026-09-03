@@ -146,6 +146,7 @@ td.calc{background:var(--surface-2);color:var(--ink-2)}
 td.wk{background:var(--accent-soft);color:var(--ink-2)}
 td.num-c{text-align:right}
 td.dev-warn{color:var(--warn)} td.dev-crit{color:var(--crit);font-weight:600}
+tr.kapali td{color:var(--muted)}
 td.wknd{background:var(--surface-2)}
 table.grid tbody tr:hover td:not(.calc):not(.wk){background:var(--surface-2)}
 td.inrange{background:var(--accent-soft)!important}
@@ -244,6 +245,7 @@ td.editing{position:relative;padding:0}
         <option value="devam">Devam eden</option>
         <option value="tamam">Tamamlanan</option>
         <option value="bos">Üretim girilmemiş</option>
+        <option value="kapali">Kapatılan</option>
       </select>
       <span class="month-nav">
         <button class="btn sm" id="mPrev" aria-label="Önceki ay">‹</button>
@@ -253,6 +255,7 @@ td.editing{position:relative;padding:0}
       </span>
       <span class="spacer"></span>
       <span class="count" id="oCount"></span>
+      <button class="btn sm" id="btnCloseOrder">İş emrini kapat</button>
       <button class="btn sm" id="btnDelRow">Satırı sil</button>
       <button class="btn sm danger" id="btnClear2">Boşalt</button>
       <button class="btn primary" id="btnNew">Yeni iş emri</button>
@@ -303,6 +306,7 @@ td.editing{position:relative;padding:0}
     <div class="toolbar">
       <label class="field"><span>Başlangıç</span><input type="date" id="sFrom"></label>
       <label class="field"><span>Bitiş</span><input type="date" id="sTo"></label>
+      <button class="btn sm" id="sToday">Bugün</button>
       <button class="btn sm" id="sAll">Tüm dönem</button>
       <span class="spacer"></span>
       <span class="count" id="sRange"></span>
@@ -317,9 +321,9 @@ td.editing{position:relative;padding:0}
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h2>Makine yükü</h2><p>Gerçekleşen çalışma saati</p></div>
+        <div class="panel-head"><h2>Makine yükü</h2><p>Seçili dönemdeki çalışma, duruş ve verim</p></div>
         <div class="scroll"><table>
-          <thead><tr><th>Makine</th><th class="r">İş emri</th><th class="r">Üretim</th><th class="r">Çalışma sa.</th><th>Yük</th><th class="r">Ort. sapma</th></tr></thead>
+          <thead><tr><th>Makine</th><th class="r">İş emri</th><th class="r">Üretim</th><th class="r">Çalışma sa.</th><th class="r">Duruş sa.</th><th class="r">Hatalı</th><th class="r">Verim</th><th>Yük</th><th class="r">Ort. sapma</th></tr></thead>
           <tbody id="mBody"></tbody>
         </table></div>
       </div>
@@ -380,7 +384,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "34";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "37";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -642,7 +646,7 @@ async function cloudBoot(){
 const SALT="Bu sayfa görüntüleme içindir; veriyi yalnızca yetkili kişi değiştirebilir.";
 function applyReadonly(){
   const on=canEdit();
-  ["#btnNew","#btnDelRow","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine"]
+  ["#btnNew","#btnDelRow","#btnCloseOrder","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine"]
     .forEach(id=>{ const b=$(id); if(b) b.hidden=!on; });
   $("#btnEdit").textContent = on&&cloudOn() ? "Düzenlemeyi kapat" : "Düzenlemeyi aç";
   $("#btnEdit").hidden = !cloudOn();
@@ -743,6 +747,7 @@ const BASE_COLS=[
   {k:"ie",   t:"İş Emri",            w:112, type:"text", frozen:true},
   {k:"kod",  t:"Stok Kodu",          w:106, type:"code", frozen:true},
   {k:"urun", t:"Ürün",               w:224, type:"product", frozen:true},
+  {k:"kapali",  t:"Durum",               w:64, type:"flag"},
   {k:"cevrim",  t:"Çevrim Süresi",       w:84, type:"num", dec:2},
   {k:"gcevrim", t:"Gerçekleşen Çevrim",  w:92, type:"num", dec:2},
   {k:"kgoz", t:"Kalıp Göz Sayısı",   w:78, type:"num"},
@@ -830,6 +835,7 @@ function orderInMonth(o,mk){
   if(!mk) return true;
   const st=orderStart(o); if(st && mk<st) return false;      // o ay henüz açılmamıştı
   const en=orderLastMonth(o); if(en && mk<=en) return true;   // o ayda üretim girişi var
+  if(o.kapali) return false;                                  // elle kapatılan iş emri devretmez
   const p=n0(o.plan); return !(p>0 && n0(calc(o).J)>=p);      // planı dolduysa sonraki aylara devretmez
 }
 /* Eski kayıtlarda ay damgası yok: ilk üretim ayından, o da yoksa bu aydan sayılır. */
@@ -862,9 +868,10 @@ function filteredOrders(){
     if(q && ((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")).toLocaleLowerCase("tr").indexOf(q)<0) return false;
     if(st){
       const c=calc(o);
-      if(st==="bos" && c.J) return false;
-      if(st==="tamam" && !(n0(o.plan) && c.J>=n0(o.plan))) return false;
-      if(st==="devam" && !(c.J>0 && (!n0(o.plan) || c.J<n0(o.plan)))) return false;
+      if(st==="bos" && (c.J||o.kapali)) return false;
+      if(st==="kapali" && !o.kapali) return false;
+      if(st==="tamam" && !(o.kapali || (n0(o.plan) && c.J>=n0(o.plan)))) return false;
+      if(st==="devam" && (o.kapali || !(c.J>0 && (!n0(o.plan) || c.J<n0(o.plan))))) return false;
     }
     return true;
   });
@@ -893,6 +900,7 @@ function cellText(o,col,c){
     if(!v) return "";
     return col.dec? fmt2(v) : fmt(v);
   }
+  if(col.type==="flag") return o.kapali?"Kapalı":"";
   if(col.type==="select") return o.makine?machineLabel(o.makine):"";
   const v=o[col.k];
   if(col.type==="num") return v==null||v===""?"":(col.dec?fmt2(v):fmt(v));
@@ -960,6 +968,7 @@ function renderBody(){
     const o=gridRows[r], c=calc(o), tr=el("tr");
     tr.dataset.r=r;
     cols.forEach((col,i)=>{
+      if(o.kapali) tr.classList.add("kapali");
       const cell=el("td",cellClass(col,o,c),cellText(o,col,c));
       if(col.frozen) cell.style.left=col.left+"px";
       if(r>=lo&&r<=hi&&i>=cl&&i<=ch&&!(r===sel.r&&i===sel.c)) cell.classList.add("inrange");
@@ -971,6 +980,8 @@ function renderBody(){
   }
   if(end<total) frag.appendChild(spacerRow((total-end)*ROWH));
   tb.appendChild(frag);
+  const secili=gridRows[sel.r];
+  $("#btnCloseOrder").textContent = secili&&secili.kapali ? "Yeniden aç" : "İş emrini kapat";
   paintCellInfo();
 }
 function spacerRow(h){
@@ -1072,6 +1083,7 @@ function ensureVisible(){
 function startEdit(seedChar){
   if(!canEdit()){ toast(SALT); return; }
   const o=gridRows[sel.r], col=cols[sel.c];
+  if(col&&col.type==="flag"){ toast("Bu sütun “İş emrini kapat” düğmesiyle değişir"); return; }
   if(!o||!col||col.calc){ if(col&&col.calc) toast("Bu sütun kendiliğinden hesaplanır"); return; }
   const cell=$("#gridBody td.active"); if(!cell) return;
   cell.classList.add("editing"); cell.textContent="";
@@ -1346,6 +1358,11 @@ $("#btnNew").addEventListener("click",()=>{
   const i=gridRows.indexOf(o); if(i>=0){ sel.r=i; sel.c=0; sel.ar=i; sel.ac=0; ensureVisible(); renderBody(); }
   toast("Satır eklendi — stok kodunu girince ürün bilgileri dolar");
 });
+$("#btnCloseOrder").addEventListener("click",()=>{
+  const o=gridRows[sel.r]; if(!o){ toast("Önce bir satır seç"); return; }
+  o.kapali=!o.kapali; saveOrder(o); renderOrders();
+  toast(o.kapali?"İş emri kapatıldı":"İş emri yeniden açıldı");
+});
 $("#btnDelRow").addEventListener("click",()=>{
   const o=gridRows[sel.r]; if(!o){ toast("Önce bir satır seç"); return; }
   askConfirm("“"+(o.ie||"—")+"” iş emri ve tüm gün girişleri silinecek.",()=>{
@@ -1468,17 +1485,22 @@ function renderSummary(){
     let inRange=0;
     for(const k in o.days){ if(k>=from&&k<=to){ const v=n0(o.days[k]); if(v){ inRange+=v; const w=weekStart(k); byWeek[w]=(byWeek[w]||0)+v; } } }
     if(!inRange) return;
-    plan+=n0(o.plan); J+=inRange;
+    /* Hatalı adet iş emrinin tamamına ait; döneme düşen payı üretim oranıyla alınır ve sağlam adetten düşülür. */
+    const pay = c.T ? inRange/c.T : 0;
+    const saglam = Math.max(inRange - n0(o.hatali)*pay, 0);
+    plan+=n0(o.plan); J+=saglam;
     const h = c.Q ? inRange/c.Q : 0; hours+=h;
-    fire+=c.V;
+    fire+=c.V*pay;
     if(n0(o.plan) && c.J>=n0(o.plan)) done++; else active++;
     if(c.M){ devSum+=c.M; devN++; } else devN++;
     const mk=o.makine||"";
-    const m = byMachine[mk] || (byMachine[mk]={n:0,q:0,h:0,dev:0,devN:0});
-    m.n++; m.q+=inRange; m.h+=h; m.dev+=c.M; m.devN++;
+    const m = byMachine[mk] || (byMachine[mk]={n:0,q:0,h:0,dev:0,devN:0,durus:0,hatali:0,ver:0,verQ:0});
+    m.n++; m.q+=saglam; m.h+=h; m.dev+=c.M; m.devN++;
+    m.durus+=n0(o.durus)*pay; m.hatali+=n0(o.hatali)*pay;
+    if(c.P&&c.Q){ m.ver += (c.Q/c.P)*inRange; m.verQ += inRange; }
     const pk=o.kod||"—";
     const p = byProduct[pk] || (byProduct[pk]={n:0,q:0,fire:0,ad:o.urun});
-    p.n++; p.q+=inRange; p.fire+=c.V;
+    p.n++; p.q+=saglam; p.fire+=c.V*pay;
   });
   const k=$("#sKpis"); k.innerHTML="";
   k.appendChild(kpi("Hareketli iş emri", fmt(active+done), (done?fmt(done)+" tamamlandı · ":"")+fmt(active)+" devam ediyor"));
@@ -1490,13 +1512,16 @@ function renderSummary(){
   const mb=$("#mBody"); mb.innerHTML="";
   const ms=Object.entries(byMachine).sort((a,b)=>b[1].h-a[1].h);
   const maxH = ms.length ? ms[0][1].h : 0;
-  if(!ms.length){ const tr=el("tr"); const c=el("td","empty","Seçili dönemde üretim kaydı yok."); c.colSpan=6; tr.appendChild(c); mb.appendChild(tr); }
+  if(!ms.length){ const tr=el("tr"); const c=el("td","empty","Seçili dönemde üretim kaydı yok."); c.colSpan=9; tr.appendChild(c); mb.appendChild(tr); }
   ms.forEach(([name,m])=>{
     const tr=el("tr");
     tr.appendChild(td(machineLabel(name),"strong"));
     tr.appendChild(td(fmt(m.n),"r mono"));
     tr.appendChild(td(fmt(m.q),"r mono"));
     tr.appendChild(td(fmt1(m.h),"r mono strong"));
+    tr.appendChild(td(m.durus?fmt1(m.durus):"—","r mono"));
+    tr.appendChild(td(m.hatali?fmt(Math.round(m.hatali)):"—","r mono"));
+    tr.appendChild(td(m.verQ?pctS(m.ver/m.verQ):"—","r mono"));
     const b=el("td"); b.appendChild(meter(maxH?m.h/maxH:0,null)); tr.appendChild(b);
     const d=el("td","r"); const pl=el("span","pill "+devClass(m.dev/m.devN)); pl.appendChild(el("i","dot")); pl.appendChild(el("span",null,pctS(m.dev/m.devN))); d.appendChild(pl); tr.appendChild(d);
     mb.appendChild(tr);
@@ -1564,6 +1589,7 @@ function drawWeekly(byWeek){
 }
 function compact(v){ v=Math.round(v); if(v>=1e6) return nf1.format(v/1e6)+"M"; if(v>=1e3) return nf.format(Math.round(v/1e3))+"B"; return nf.format(v); }
 ["#sFrom","#sTo"].forEach(s=>$(s).addEventListener("input",renderSummary));
+$("#sToday").addEventListener("click",()=>{ const t=todayISO(); $("#sFrom").value=t; $("#sTo").value=t; renderSummary(); });
 $("#sAll").addEventListener("click",()=>{ const f=fullRange(); $("#sFrom").value=f.from; $("#sTo").value=f.to; renderSummary(); });
 
 /* ---------- PRODUCTS ---------- */
@@ -1701,7 +1727,7 @@ async function toClipboard(text,okMsg){
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
 /* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
-const PRINT_LABEL={cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+const PRINT_LABEL={kapali:"Durum",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
   plan:"Plan. Üretim",J:"Gerç. Üretim",pct:"Gerç. %",K:"Plan. Saat",L:"Gerç. Saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Teorik/Saat",Q:"Gerç./Saat",vardiya:"Vardiya (8 sa)",
   R:"Teorik/24 sa",S:"Gerç./24 sa",hatali:"Hatalı",V:"Fire (kg)"};
@@ -1900,7 +1926,7 @@ function table(sep){
   const head=["İş Emri","Stok Kodu","Ürün","Çevrim Süresi","Gerçekleşen Çevrim","Kalıp Göz Sayısı","Çalışan Göz Sayısı","Makine",
     "Planlanan Üretim","Gerçekleşen Üretim","Planlanan Çalışma Saati","Gerçekleşen Çalışma","Sapma Oranı","Fazla Çalışma",
     "Arıza/Duruş","Teorik Saatlik Kapasite","Gerçekleşen Saatlik","Teorik 24 Saatlik","Gerçekleşen 24 Saatlik",
-    "Hatalı Üretim","Hammadde Firesi","Teorik Vardiya (8 sa)","Son Üretim"];
+    "Hatalı Üretim","Hammadde Firesi","Teorik Vardiya (8 sa)","Son Üretim","Durum"];
   const dec=v=>String(v==null?"":v).replace(".",",");
   const q=v=>String(v==null?"":v).replace(/[\t\r\n]/g," ");
   const lines=[head.map(q).join(sep)];
@@ -1908,7 +1934,7 @@ function table(sep){
     lines.push([o.ie,o.kod,o.urun,dec(o.cevrim),dec(o.gcevrim),dec(o.kgoz),dec(o.cgoz),machineLabel(o.makine),dec(o.plan),
       dec(c.J),dec(c.K.toFixed(2)),dec(c.L.toFixed(2)),dec((c.M*100).toFixed(2)),dec(c.N.toFixed(2)),dec(o.durus),
       dec(c.P.toFixed(2)),dec(c.Q.toFixed(2)),dec(c.R.toFixed(0)),dec(c.S.toFixed(0)),dec(o.hatali),dec(c.V.toFixed(3)),
-      dec(c.vardiya.toFixed(0)),c.son?trDate(c.son):""].map(q).join(sep));
+      dec(c.vardiya.toFixed(0)),c.son?trDate(c.son):"",o.kapali?"Kapalı":""].map(q).join(sep));
   });
   return lines.join("\r\n");
 }
