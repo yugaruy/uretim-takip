@@ -360,7 +360,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "24";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "25";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -482,6 +482,7 @@ function replaceAll(orders,products,machines,msg){
   S.products=products.map((p,i)=>Object.assign({},p,{_id:"p"+String(i).padStart(3,"0")}));
   S.machines=(machines||[]).map((m,i)=>Object.assign({},m,{_id:"m"+String(i).padStart(2,"0")}));
   S.pver=SEED_VER;
+  stampMonths(S.orders);
   persistLocal(); fillMachineSelects(); render(); toast(msg);
 }
 
@@ -501,6 +502,7 @@ function onFirstData(){
 }
 function boot(){
   S=loadLocal()||seedState();
+  stampMonths(S.orders);
   autoSync(); onFirstData();
   fillMachineSelects(); render(); paintStatus();
 }
@@ -645,6 +647,19 @@ function monthList(){
   while(m<=end && guard++<800){ out.push(m); m=shiftMonth(m,1); }
   return out;
 }
+/* Bir iş emrinin ayı: üretim girişi yapılan aylar; hiç giriş yoksa açıldığı ay (o.ay).
+   Planı dolmayan iş emri, son üretim ayından sonraki aylara devreder ki girişe devam edilebilsin. */
+function orderFirstMonth(o){ let f=""; for(const k in o.days){ if(n0(o.days[k])){ const m=k.slice(0,7); if(!f||m<f) f=m; } } return f; }
+function orderLastMonth(o){ let l=""; for(const k in o.days){ if(n0(o.days[k])){ const m=k.slice(0,7); if(m>l) l=m; } } return l; }
+function orderStart(o){ const f=orderFirstMonth(o); if(f&&o.ay) return f<o.ay?f:o.ay; return f||o.ay||""; }
+function orderInMonth(o,mk){
+  if(!mk) return true;
+  const st=orderStart(o); if(st && mk<st) return false;      // o ay henüz açılmamıştı
+  const en=orderLastMonth(o); if(en && mk<=en) return true;   // o ayda üretim girişi var
+  const p=n0(o.plan); return !(p>0 && n0(calc(o).J)>=p);      // planı dolduysa sonraki aylara devretmez
+}
+/* Eski kayıtlarda ay damgası yok: ilk üretim ayından, o da yoksa bu aydan sayılır. */
+function stampMonths(list){ const t=todayISO().slice(0,7); (list||[]).forEach(o=>{ if(!o.ay) o.ay=orderFirstMonth(o)||t; }); }
 function shiftMonth(mk,k){
   let y=+mk.slice(0,4), m=+mk.slice(5,7)+k;
   while(m<1){ m+=12; y--; } while(m>12){ m-=12; y++; }
@@ -668,6 +683,7 @@ function filteredOrders(){
   const q=$("#oSearch").value.trim().toLocaleLowerCase("tr");
   const m=$("#oMachine").value, st=$("#oStatus").value;
   return S.orders.filter(o=>{
+    if(!orderInMonth(o,monthKey)) return false;
     if(m && o.makine!==m) return false;
     if(q && ((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")).toLocaleLowerCase("tr").indexOf(q)<0) return false;
     if(st){
@@ -1136,7 +1152,7 @@ $("#mNext").addEventListener("click",()=>{ monthAuto=false; monthKey=shiftMonth(
 $("#mNow").addEventListener("click",()=>{ monthAuto=false; monthKey=todayISO().slice(0,7); headBuilt=""; renderOrders(); });
 $("#btnNew").addEventListener("click",()=>{
   let n=1; while(S.orders.some(o=>o.ie==="YENİ-"+n)) n++;
-  const o={_id:newId(),ie:"YENİ-"+n,kod:"",urun:"",cevrim:null,gcevrim:null,kgoz:null,cgoz:null,makine:"",plan:null,durus:null,hatali:null,days:{}};
+  const o={_id:newId(),ie:"YENİ-"+n,kod:"",urun:"",cevrim:null,gcevrim:null,kgoz:null,cgoz:null,makine:"",plan:null,durus:null,hatali:null,days:{},ay:monthKey||todayISO().slice(0,7)};
   S.orders.push(o); saveOrder(o);
   $("#oSearch").value=""; $("#oMachine").value=""; $("#oStatus").value="";
   sortK=""; sortDir=1; renderOrders();
