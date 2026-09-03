@@ -379,7 +379,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "29";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "30";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -853,13 +853,22 @@ function firstDay(){
 /* Kayıt ileri bir tarihe uzanmıyorsa bugünden başlanır. */
 function lastDataDay(){ const m=lastDay(), t=todayISO(); return m&&m>t ? m : t; }
 function lastDataMonth(){ const m=lastDay(), t=todayISO().slice(0,7); const mm=m?m.slice(0,7):""; return mm&&mm>t ? mm : t; }
+/* Açılışta bu ay gösterilir; bu ayda gösterilecek iş emri yoksa veri olan son aya düşülür,
+   yoksa kayıtlı veri varken ekran boş görünür. */
+function autoMonth(){
+  const t=lastDataMonth();
+  if(!S.orders.length || S.orders.some(o=>orderInMonth(o,t))) return t;
+  let last=""; dataMonths().forEach(m=>{ if(m>last) last=m; });
+  if(!last) S.orders.forEach(o=>{ const st=orderStart(o); if(st>last) last=st; });
+  return last||t;
+}
 function paintBrand(){
   const t=parseISO(todayISO());
   const AY=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
   $("#brandSpan").textContent = t.getUTCDate()+" "+AY[t.getUTCMonth()]+" "+t.getUTCFullYear()+" · "+gunAdi(todayISO());
 }
 function renderOrders(){
-  if(monthAuto||!monthKey){ const m=lastDataMonth(); if(m!==monthKey){ monthKey=m; headBuilt=""; } }
+  if(monthAuto||!monthKey){ const m=autoMonth(); if(m!==monthKey){ monthKey=m; headBuilt=""; } }
   buildCols(); computeRows(); renderHead(); renderBody(); fillMonthSel();
 }
 function fillMonthSel(){
