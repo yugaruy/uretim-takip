@@ -381,7 +381,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "31";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "32";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -455,9 +455,19 @@ function writeLocal(){
     return true;
   }catch(e){ statusNote="Kaydedilemedi: tarayıcı deposu dolu"; return false; }
 }
-const persistLocal=debounce(function(){ writeLocal(); paintStatus(); if(cloudOn()&&writeKey){ pushPending=true; cloudSave(); } },250);
+const DKEY="uretim-takip-bekleyen";
+let dirty=false; try{ dirty=localStorage.getItem(DKEY)==="1"; }catch(e){}
+function setDirty(v){ dirty=v; try{ v?localStorage.setItem(DKEY,"1"):localStorage.removeItem(DKEY); }catch(e){} }
+const persistSoon=debounce(function(){ writeLocal(); paintStatus(); },250);
+/* Değişiklik anında "bekleyen" işaretlenir: buluttan gelen veri, kaydedilmemiş değişikliğin üzerine yazamaz. */
+function persistLocal(){
+  if(cloudOn()&&writeKey) setDirty(true);
+  persistSoon();
+  if(cloudOn()&&writeKey) cloudSave();
+}
 /* Sekme kapanırken ya da arka plana alınırken bekleyen yazma kaybolmasın. */
 window.addEventListener("pagehide",writeLocal);
+window.addEventListener("beforeunload",e=>{ if(dirty&&cloudOn()&&writeKey){ e.preventDefault(); e.returnValue=""; } });
 window.addEventListener("beforeunload",writeLocal);
 document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="hidden") writeLocal(); });
 
@@ -511,7 +521,7 @@ function replaceAll(orders,products,machines,msg){
 const CLOUD={url:"https://zyhucejlbbhtwkxesgvh.supabase.co",key:"sb_publishable_OQBEU4AWBw15s_bWt6j1wA_A8icK1M7"};
 const PKEY="uretim-takip-yazma-parolasi";
 let writeKey=""; try{ writeKey=localStorage.getItem(PKEY)||""; }catch(e){}
-let cloudStamp="", cloudErr="", pushPending=false;
+let cloudStamp="", cloudErr="";
 function cloudOn(){ return !!(CLOUD.url&&CLOUD.key); }
 function canEdit(){ return !cloudOn() || !!writeKey; }
 function cloudHead(){ return {apikey:CLOUD.key,Authorization:"Bearer "+CLOUD.key,"Content-Type":"application/json"}; }
@@ -528,17 +538,29 @@ function applyCloud(v){
   stampMonths(S.orders);
   writeLocal(); onFirstData(); fillMachineSelects(); render();
 }
+let retryT=0;
 async function cloudPush(sessiz){
   if(!cloudOn()||!writeKey) return false;
+  let r;
   try{
-    const r=await fetch(CLOUD.url+"/rest/v1/rpc/kaydet",{method:"POST",headers:cloudHead(),
+    r=await fetch(CLOUD.url+"/rest/v1/rpc/kaydet",{method:"POST",headers:cloudHead(),
       body:JSON.stringify({parola:writeKey,yeni:{orders:S.orders,products:S.products,machines:S.machines}})});
-    if(!r.ok) throw new Error(String(r.status));
-    const row=await cloudRow("guncelleme"); if(row) cloudStamp=row.guncelleme;
-    cloudErr=""; pushPending=false; paintStatus();
-    if(!sessiz) toast("Buluta kaydedildi");
-    return true;
-  }catch(e){ cloudErr="yazma"; paintStatus(); if(!sessiz) toast("Buluta kaydedilemedi, bağlantıyı kontrol et"); return false; }
+  }catch(e){ cloudErr="yazma"; paintStatus(); retryPush(); if(!sessiz) toast("Buluta kaydedilemedi, bağlantıyı kontrol et"); return false; }
+  if(!r.ok){
+    cloudErr = (r.status>=400&&r.status<500) ? "parola" : "yazma";
+    paintStatus(); if(cloudErr==="yazma") retryPush();
+    if(!sessiz) toast(cloudErr==="parola"?"Parola yanlış":"Buluta kaydedilemedi, bağlantıyı kontrol et");
+    return false;
+  }
+  const row=await cloudRow("guncelleme").catch(()=>null); if(row) cloudStamp=row.guncelleme;
+  cloudErr=""; setDirty(false); paintStatus();
+  if(!sessiz) toast("Buluta kaydedildi");
+  return true;
+}
+/* Kaydetme tutmazsa vazgeçme: bekleyen değişiklik kalmayana kadar 15 saniyede bir yeniden dene. */
+function retryPush(){
+  if(retryT||!dirty) return;
+  retryT=setTimeout(()=>{ retryT=0; if(dirty&&writeKey) cloudPush(true); },15000);
 }
 const cloudSave=debounce(()=>{ cloudPush(true); },1500);
 async function cloudTryKey(k){
@@ -550,7 +572,7 @@ async function cloudTryKey(k){
 }
 /* Başkası kaydettiyse çek. Kendi yazımız bekliyorsa ya da hücre düzenleniyorsa dokunma. */
 async function cloudPull(zorla){
-  if(!cloudOn()||pushPending||editing) return;
+  if(!cloudOn()||dirty||editing) return;
   try{
     const t=await cloudRow("guncelleme"); if(!t) return;
     if(!zorla && t.guncelleme===cloudStamp){ if(cloudErr==="okuma"){ cloudErr=""; paintStatus(); } return; }
@@ -561,14 +583,28 @@ async function cloudPull(zorla){
   }catch(e){ cloudErr="okuma"; paintStatus(); }
 }
 /* Açılış: bulut doluysa buluttaki veri esastır; boşsa ve bu cihazda veri varsa bir kez yukarı taşınır. */
+function keyOff(msg){
+  writeKey=""; try{ localStorage.removeItem(PKEY); }catch(e){}
+  applyReadonly(); paintStatus(); render(); toast(msg);
+}
 async function cloudBoot(){
   if(!cloudOn()) return;
   try{
     const row=await cloudRow("veri,guncelleme"); if(!row) return;
     const v=row.veri||{}; cloudStamp=row.guncelleme;
-    const bos=!(v.orders&&v.orders.length)&&!(v.products&&v.products.length);
-    if(bos){ if((S.orders.length||S.products.length)&&writeKey) await cloudPush(true); }
-    else applyCloud(v);
+    const bulutBos=!(v.orders&&v.orders.length)&&!(v.products&&v.products.length);
+    const yerelVar=!!(S.orders.length||S.products.length);
+    if(writeKey && (dirty || (bulutBos&&yerelVar))){
+      const ok=await cloudPush(true);            /* bu cihazda kaydedilmemiş değişiklik varsa önce o çıkar */
+      if(!ok && cloudErr==="parola") keyOff("Parola geçersiz, düzenleme kapatıldı");
+      return;
+    }
+    if(!bulutBos) applyCloud(v);
+    if(writeKey){                                /* parola geçerli mi, veri girmeye başlamadan anlaşılsın */
+      const sonuc=await cloudTryKey(writeKey);
+      if(sonuc==="parola"){ keyOff("Parola geçersiz, düzenleme kapatıldı"); return; }
+      if(sonuc==="ok"){ const t=await cloudRow("guncelleme").catch(()=>null); if(t) cloudStamp=t.guncelleme; }
+    }
     cloudErr=""; paintStatus();
   }catch(e){ cloudErr="okuma"; paintStatus(); }
 }
@@ -584,7 +620,9 @@ function applyReadonly(){
 function paintStatus(){
   const s=$("#savedAt");
   if(cloudOn()){
-    const hata = cloudErr==="okuma" ? " · buluta ulaşılamadı" : cloudErr==="yazma" ? " · kaydedilemedi" : "";
+    const hata = cloudErr==="okuma" ? " · buluta ulaşılamadı"
+      : cloudErr==="yazma" ? " · kaydedilemedi, yeniden denenecek"
+      : cloudErr==="parola" ? " · parola geçersiz" : "";
     s.textContent = (writeKey?"Canlı kayıt · düzenleme açık":"Canlı kayıt · herkes görüyor")+hata+" · sürüm "+BUILD;
     s.style.color = cloudErr ? "var(--crit)" : "";
   } else {
