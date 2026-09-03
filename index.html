@@ -384,7 +384,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "37";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "38";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -536,7 +536,18 @@ async function cloudRow(alan){
   if(!r.ok) throw new Error("okuma");
   const j=await r.json(); return (j&&j[0])||null;
 }
+const SKEY="uretim-takip-onceki";
+/* Buluttan gelen veri cihazdaki kayıtları eksiltiyorsa, üzerine yazmadan önce bir kopya saklanır.
+   Yedek penceresinden geri yüklenebilir. */
+function stashLocal(v){
+  try{
+    const gelen=Array.isArray(v.orders)?v.orders.length:0;
+    if(!S.orders.length || gelen>=S.orders.length) return;
+    localStorage.setItem(SKEY, JSON.stringify({zaman:new Date().toISOString(), n:S.orders.length, veri:backupJSON()}));
+  }catch(e){}
+}
 function applyCloud(v){
+  stashLocal(v);
   S.orders=Array.isArray(v.orders)?v.orders:[];
   S.products=Array.isArray(v.products)?v.products:[];
   S.machines=Array.isArray(v.machines)&&v.machines.length?v.machines:S.machines;
@@ -627,9 +638,11 @@ async function cloudBoot(){
     const row=await cloudRow("veri,guncelleme"); if(!row) return;
     const v=row.veri||{}; cloudStamp=row.guncelleme;
     if(dirty) touchedAll=true;      /* önceki oturumdan kalan değişiklik: bu cihazınki geçerli */
-    const bulutBos=!(v.orders&&v.orders.length)&&!(v.products&&v.products.length);
+    const bulutIsBos=!(v.orders&&v.orders.length);
+    const bulutBos=bulutIsBos&&!(v.products&&v.products.length);
     const yerelVar=!!(S.orders.length||S.products.length);
-    if(writeKey && yerelVar && (dirty || bulutBos)){
+    /* Buluttaki iş emri listesi boş, cihazda kayıt varsa: cihazdaki veri esastır, yukarı taşınır. */
+    if(writeKey && yerelVar && (dirty || bulutBos || (bulutIsBos && S.orders.length))){
       const ok=await cloudPush(true);            /* bu cihazda kaydedilmemiş değişiklik varsa önce o çıkar */
       if(!ok && cloudErr==="parola") keyOff("Parola geçersiz, düzenleme kapatıldı");
       return;
@@ -1877,6 +1890,17 @@ function backupJSON(){
 $("#btnBackup").addEventListener("click",()=>openPanel("backup",d=>{
   d.appendChild(el("h3",null,"Yedek al veya yükle"));
   d.appendChild(el("p","hint","Aşağıdaki metin bütün verinin yedeği. Kopyalayıp bir dosyaya ya da e-postaya saklayabilir, başka bir bilgisayarda buraya yapıştırıp yükleyebilirsin."));
+  /* Buluttan gelen veri yüzünden eksilen bir kopya varsa, geri yükleme burada teklif edilir. */
+  let eski=null; try{ eski=JSON.parse(localStorage.getItem(SKEY)||"null"); }catch(e){}
+  if(eski&&eski.veri){
+    const uy=el("div","confirm");
+    uy.appendChild(el("span",null,"Bu cihazda "+trDate(eski.zaman.slice(0,10))+" tarihli, "+fmt(eski.n||0)+" iş emirlik eski bir kopya duruyor."));
+    uy.appendChild(el("span","spacer"));
+    const gy=el("button","btn sm","Eski kopyayı geri yükle");
+    gy.addEventListener("click",()=>yedekYukle(eski.veri));
+    uy.appendChild(gy);
+    d.appendChild(uy);
+  }
   const ta=el("textarea"); ta.value=backupJSON(); ta.spellcheck=false;
   ta.setAttribute("aria-label","Yedek metni");
   d.appendChild(ta);
