@@ -147,6 +147,23 @@ td.wk{background:var(--accent-soft);color:var(--ink-2)}
 td.num-c{text-align:right}
 td.dev-warn{color:var(--warn)} td.dev-crit{color:var(--crit);font-weight:600}
 tr.kapali td{color:var(--muted)}
+/* Grafik renkleri: kategorik palet, açık ve koyu yüzey için ayrı adımlanmış. */
+.viz{--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#4a3aa7;--s0:#8697a4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .viz{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s0:#6b7a86}}
+:root[data-theme="dark"] .viz{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s0:#6b7a86}
+.pie-wrap{display:flex;gap:22px;align-items:center;flex-wrap:wrap;padding:14px 15px}
+.pie-wrap svg{flex:0 0 190px;width:190px;height:190px}
+.pie-seg{cursor:default;transition:opacity .12s}
+.pie-wrap.hover .pie-seg{opacity:.35}
+.pie-wrap.hover .pie-seg.on{opacity:1}
+.pie-mid{font:600 15px "IBM Plex Sans",system-ui,sans-serif;fill:var(--ink)}
+.pie-sub{font:11.5px "IBM Plex Sans",system-ui,sans-serif;fill:var(--muted)}
+.pie-leg{flex:1;min-width:210px;display:flex;flex-direction:column;gap:5px}
+.pie-leg .row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:2px 0;cursor:default}
+.pie-leg .chip{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+.pie-leg .ad{flex:1;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pie-leg .adet{font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+.pie-leg .pay{font-family:"IBM Plex Mono",monospace;color:var(--muted);width:46px;text-align:right}
 td.wknd{background:var(--surface-2)}
 table.grid tbody tr:hover td:not(.calc):not(.wk){background:var(--surface-2)}
 td.inrange{background:var(--accent-soft)!important}
@@ -329,6 +346,10 @@ td.editing{position:relative;padding:0}
       </div>
     </div>
     <div class="panel" style="margin-top:16px">
+      <div class="panel-head"><h2>Makine payı</h2><p>Seçili dönemde üretilen sağlam adedin makinelere dağılımı</p></div>
+      <div class="pie-wrap viz" id="pieWrap"></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
       <div class="panel-head"><h2>Ürün bazında üretim</h2><p>Seçili dönemde en çok üretilen 15 ürün</p></div>
       <div class="scroll"><table>
         <thead><tr><th>Stok Kodu</th><th>Ürün</th><th class="r">İş emri</th><th class="r">Üretim</th><th>Pay</th><th class="r">Fire kg</th></tr></thead>
@@ -384,7 +405,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "41";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "42";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1417,6 +1438,51 @@ function focusOrder(ie){
   const i=gridRows.findIndex(o=>o.ie===ie);
   if(i>=0){ sel.r=i; sel.c=0; sel.ar=i; sel.ac=0; ensureVisible(); renderBody(); $("#gridScroll").focus(); }
 }
+function svgEl(t,a){ const e=document.createElementNS("http://www.w3.org/2000/svg",t); for(const k in a) e.setAttribute(k,a[k]); return e; }
+/* Makine payı halkası: ilk yedi makine kendi rengini alır, kalanlar "Diğer"de toplanır.
+   Renkler kategorik palet sırasıyla verilir, sıralamaya göre değil makineye göre sabittir. */
+function drawPie(ms){
+  const wrap=$("#pieWrap"); wrap.innerHTML=""; wrap.classList.remove("hover");
+  const list=ms.slice(0,7).map(([k,m],i)=>({ad:machineLabel(k),q:m.q,renk:"var(--s"+(i+1)+")"}));
+  const kalan=ms.slice(7).reduce((a,x)=>a+x[1].q,0);
+  if(kalan>0) list.push({ad:"Diğer ("+(ms.length-7)+" makine)",q:kalan,renk:"var(--s0)"});
+  const toplam=list.reduce((a,x)=>a+x.q,0);
+  if(!toplam){ wrap.appendChild(el("p","hint","Seçili dönemde üretim kaydı yok.")); return; }
+  const R=70, W=26, C=2*Math.PI*R;
+  const svg=svgEl("svg",{viewBox:"0 0 200 200",role:"img","aria-label":"Makine bazında üretim payı"});
+  const g=svgEl("g",{transform:"rotate(-90 100 100)"});
+  const orta=svgEl("text",{x:100,y:98,"text-anchor":"middle",class:"pie-mid"}); orta.textContent=fmt(toplam);
+  const alt=svgEl("text",{x:100,y:114,"text-anchor":"middle",class:"pie-sub"}); alt.textContent="adet";
+  let off=0; const parcalar=[];
+  list.forEach((x,i)=>{
+    const uzn=C*x.q/toplam, bosluk=list.length>1?2:0;
+    const c=svgEl("circle",{cx:100,cy:100,r:R,fill:"none","stroke-width":W,
+      "stroke-dasharray":Math.max(uzn-bosluk,0.5)+" "+(C-Math.max(uzn-bosluk,0.5)),"stroke-dashoffset":-off,class:"pie-seg"});
+    c.style.stroke=x.renk;
+    const t=svgEl("title"); t.textContent=x.ad+" — "+fmt(x.q)+" adet ("+pctS(x.q/toplam)+")";
+    c.appendChild(t);
+    g.appendChild(c); parcalar.push(c); off+=uzn;
+    x.el=c; x.i=i;
+  });
+  svg.appendChild(g); svg.appendChild(orta); svg.appendChild(alt); wrap.appendChild(svg);
+  const leg=el("div","pie-leg");
+  list.forEach(x=>{
+    const row=el("div","row");
+    const ch=el("span","chip"); ch.style.background=x.renk;
+    row.appendChild(ch);
+    row.appendChild(el("span","ad",x.ad));
+    row.appendChild(el("span","adet",fmt(x.q)));
+    row.appendChild(el("span","pay",pctS(x.q/toplam)));
+    const gir=()=>{ wrap.classList.add("hover"); parcalar.forEach(c=>c.classList.remove("on")); x.el.classList.add("on");
+      orta.textContent=fmt(x.q); alt.textContent=x.ad; };
+    const cik=()=>{ wrap.classList.remove("hover"); parcalar.forEach(c=>c.classList.remove("on"));
+      orta.textContent=fmt(toplam); alt.textContent="adet"; };
+    row.addEventListener("mouseenter",gir); row.addEventListener("mouseleave",cik);
+    x.el.addEventListener("mouseenter",gir); x.el.addEventListener("mouseleave",cik);
+    leg.appendChild(row);
+  });
+  wrap.appendChild(leg);
+}
 function meter(pct,st){
   const w=el("div","meter");
   const tr=el("div","track"), f=el("div","fill");
@@ -1567,6 +1633,7 @@ function renderSummary(){
     const d=el("td","r"); const pl=el("span","pill "+devClass(m.dev/m.devN)); pl.appendChild(el("i","dot")); pl.appendChild(el("span",null,pctS(m.dev/m.devN))); d.appendChild(pl); tr.appendChild(d);
     mb.appendChild(tr);
   });
+  drawPie(ms);
   const pb=$("#pBody"); pb.innerHTML="";
   const ps=Object.entries(byProduct).sort((a,b)=>b[1].q-a[1].q).slice(0,15);
   const maxQ = ps.length?ps[0][1].q:0;
