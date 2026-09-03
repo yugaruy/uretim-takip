@@ -384,7 +384,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "38";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "39";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -527,7 +527,7 @@ function replaceAll(orders,products,machines,msg){
 const CLOUD={url:"https://zyhucejlbbhtwkxesgvh.supabase.co",key:"sb_publishable_OQBEU4AWBw15s_bWt6j1wA_A8icK1M7"};
 const PKEY="uretim-takip-yazma-parolasi";
 let writeKey=""; try{ writeKey=localStorage.getItem(PKEY)||""; }catch(e){}
-let cloudStamp="", cloudErr="";
+let cloudStamp="", cloudErr="", yeniSurum=false;
 function cloudOn(){ return !!(CLOUD.url&&CLOUD.key); }
 function canEdit(){ return !cloudOn() || !!writeKey; }
 function cloudHead(){ return {apikey:CLOUD.key,Authorization:"Bearer "+CLOUD.key,"Content-Type":"application/json"}; }
@@ -656,6 +656,14 @@ async function cloudBoot(){
     cloudErr=""; paintStatus();
   }catch(e){ cloudErr="okuma"; paintStatus(); }
 }
+async function surumKontrol(){
+  if(yeniSurum) return;
+  try{
+    const r=await fetch("index.html?s="+Date.now(),{cache:"no-store"});
+    const m=(await r.text()).match(/const BUILD = "(\d+)"/);
+    if(m && m[1]!==BUILD){ yeniSurum=true; paintStatus(); toast("Yeni sürüm yayınlandı — sayfayı yenile"); }
+  }catch(e){}
+}
 const SALT="Bu sayfa görüntüleme içindir; veriyi yalnızca yetkili kişi değiştirebilir.";
 function applyReadonly(){
   const on=canEdit();
@@ -668,11 +676,12 @@ function applyReadonly(){
 function paintStatus(){
   const s=$("#savedAt");
   if(cloudOn()){
+    const surum = yeniSurum ? " · yeni sürüm var, sayfayı yenile" : "";
     const hata = cloudErr==="okuma" ? " · buluta ulaşılamadı"
       : cloudErr==="yazma" ? " · kaydedilemedi, yeniden denenecek"
       : cloudErr==="parola" ? " · parola geçersiz" : "";
-    s.textContent = (writeKey?"Canlı kayıt · düzenleme açık":"Canlı kayıt · herkes görüyor")+hata+" · sürüm "+BUILD;
-    s.style.color = cloudErr ? "var(--crit)" : "";
+    s.textContent = (writeKey?"Canlı kayıt · düzenleme açık":"Canlı kayıt · herkes görüyor")+hata+surum+" · sürüm "+BUILD;
+    s.style.color = (cloudErr||yeniSurum) ? "var(--crit)" : "";
   } else {
     s.textContent = statusNote ? "Bu tarayıcıda kayıtlı · "+statusNote : "Bu tarayıcıda kayıtlı · sürüm "+BUILD;
     s.style.color = statusNote ? "var(--crit)" : "";
@@ -694,6 +703,7 @@ function boot(){
   fillMachineSelects(); render(); applyReadonly(); paintStatus();
   cloudBoot().then(applyReadonly);
   setInterval(()=>cloudPull(false),20000);
+  setInterval(surumKontrol,1800000); setTimeout(surumKontrol,15000);
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") cloudPull(false); });
 }
 
