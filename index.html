@@ -1,38 +1,36 @@
 <title>Üretim Takip</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
 :root{
-  --ground:#eaeef2; --surface:#ffffff; --surface-2:#f4f7f9; --line:#d2dae1; --line-soft:#e3e9ee;
-  --ink:#101519; --ink-2:#3d4d59; --muted:#67788a;
-  --accent:#0d6b83; --accent-ink:#ffffff; --accent-soft:#dcecf1; --accent-line:#a9cfda;
-  --ok:#1d7350; --ok-soft:#dcefe6; --warn:#9c5c0d; --warn-soft:#f7ebda; --crit:#9e2f2f; --crit-soft:#f6e0e0;
-  --bar:#0d6b83; --bar-soft:#bcd9e1;
+  --ground:#f3f2f1; --surface:#ffffff; --surface-2:#f5f5f5; --line:#d4d4d4; --line-soft:#e2e2e2;
+  --ink:#1a1a1a; --ink-2:#3b3b3b; --muted:#616161;
+  --accent:#217346; --accent-ink:#ffffff; --accent-soft:#e6f0ea; --accent-line:#a8ceb9;
+  --ok:#217346; --ok-soft:#e6f0ea; --warn:#9c5c0d; --warn-soft:#fdf1dc; --crit:#c00000; --crit-soft:#fbe4e4;
+  --bar:#217346; --bar-soft:#cfe3d7;
   --shadow:0 1px 2px rgba(16,21,25,.06),0 8px 24px rgba(16,21,25,.08);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --ground:#0d1216; --surface:#151b21; --surface-2:#1b232a; --line:#2a343d; --line-soft:#222b33;
-    --ink:#e3e9ef; --ink-2:#bac6d0; --muted:#8697a4;
-    --accent:#41a6c1; --accent-ink:#08171c; --accent-soft:#17323b; --accent-line:#2b5a68;
-    --ok:#4fb488; --ok-soft:#14301f; --warn:#d69141; --warn-soft:#33240f; --crit:#dd7070; --crit-soft:#341818;
-    --bar:#41a6c1; --bar-soft:#1f3c46;
+    --ground:#1b1b1b; --surface:#262626; --surface-2:#333333; --line:#4a4a4a; --line-soft:#3a3a3a;
+    --ink:#f0f0f0; --ink-2:#d0d0d0; --muted:#9a9a9a;
+    --accent:#4caf7d; --accent-ink:#0d1b13; --accent-soft:#1e3a2c; --accent-line:#356b4e;
+    --ok:#4caf7d; --ok-soft:#1e3a2c; --warn:#d69141; --warn-soft:#33240f; --crit:#f07070; --crit-soft:#3a1d1d;
+    --bar:#4caf7d; --bar-soft:#2a4b3a;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
   }
 }
 :root[data-theme="dark"]{
-  --ground:#0d1216; --surface:#151b21; --surface-2:#1b232a; --line:#2a343d; --line-soft:#222b33;
-  --ink:#e3e9ef; --ink-2:#bac6d0; --muted:#8697a4;
-  --accent:#41a6c1; --accent-ink:#08171c; --accent-soft:#17323b; --accent-line:#2b5a68;
-  --ok:#4fb488; --ok-soft:#14301f; --warn:#d69141; --warn-soft:#33240f; --crit:#dd7070; --crit-soft:#341818;
-  --bar:#41a6c1; --bar-soft:#1f3c46;
+  --ground:#1b1b1b; --surface:#262626; --surface-2:#333333; --line:#4a4a4a; --line-soft:#3a3a3a;
+  --ink:#f0f0f0; --ink-2:#d0d0d0; --muted:#9a9a9a;
+  --accent:#4caf7d; --accent-ink:#0d1b13; --accent-soft:#1e3a2c; --accent-line:#356b4e;
+  --ok:#4caf7d; --ok-soft:#1e3a2c; --warn:#d69141; --warn-soft:#33240f; --crit:#f07070; --crit-soft:#3a1d1d;
+  --bar:#4caf7d; --bar-soft:#2a4b3a;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--ground);color:var(--ink);
-  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.45;}
-h1,h2,h3,th,.eyebrow,button,.tab{font-family:Archivo,"IBM Plex Sans",sans-serif}
-.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  font-family:Calibri,"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,sans-serif;font-size:14px;line-height:1.45;}
+h1,h2,h3,th,.eyebrow,button,.tab{font-family:Calibri,"Segoe UI",sans-serif}
+.num{font-family:ui-monospace,Consolas,"SF Mono",monospace;font-variant-numeric:tabular-nums}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 
@@ -40,7 +38,7 @@ button,input,select{font:inherit;color:inherit}
 header.top{position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--line);}
 .top-in{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 18px;}
 .brand{display:flex;flex-direction:column;gap:1px;margin-right:4px}
-.brand b{font:600 16px/1.1 Archivo,sans-serif;letter-spacing:-.01em}
+.brand b{font:600 16px/1.1 Calibri,"Segoe UI",sans-serif;letter-spacing:-.01em}
 .brand span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 nav.tabs{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:7px;padding:3px}
 .tab{border:0;background:transparent;color:var(--ink-2);padding:6px 13px;border-radius:5px;font-weight:600;font-size:13px;cursor:pointer}
@@ -64,7 +62,7 @@ input[type=text],input[type=search],input[type=number],input[type=date],select{
   background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 9px;min-width:0}
 input[type=search]{min-width:230px}
 label.field{display:flex;flex-direction:column;gap:4px}
-label.field>span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;font-family:Archivo,sans-serif}
+label.field>span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;font-family:Calibri,"Segoe UI",sans-serif}
 .spacer{flex:1}
 .count{font-size:12.5px;color:var(--muted)}
 
@@ -81,7 +79,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:midd
 tbody tr:hover{background:var(--surface-2)}
 tbody tr.clickable{cursor:pointer}
 td.r,th.r{text-align:right}
-.mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.mono{font-family:ui-monospace,Consolas,"SF Mono",monospace;font-variant-numeric:tabular-nums}
 .strong{font-weight:600}
 .sub{display:block;font-size:11.5px;color:var(--muted)}
 .empty{padding:40px;text-align:center;color:var(--muted)}
@@ -101,7 +99,7 @@ td.r,th.r{text-align:right}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow)}
 .kpi .eyebrow{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.kpi .val{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:25px;font-weight:600;letter-spacing:-.02em;margin-top:5px;line-height:1.1}
+.kpi .val{font-family:ui-monospace,Consolas,"SF Mono",monospace;font-variant-numeric:tabular-nums;font-size:25px;font-weight:600;letter-spacing:-.02em;margin-top:5px;line-height:1.1}
 .kpi .foot{font-size:12px;color:var(--muted);margin-top:3px}
 .grid2{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:1100px){.grid2{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}}
@@ -114,7 +112,7 @@ td.r,th.r{text-align:right}
 .chart-wrap{position:relative}
 svg.chart{display:block;width:100%;height:auto;aspect-ratio:1000/210;overflow:visible}
 svg.chart .grid{stroke:var(--line-soft);stroke-width:1}
-svg.chart .axis{fill:var(--muted);font-size:9.5px;font-family:"IBM Plex Mono",monospace}
+svg.chart .axis{fill:var(--muted);font-size:9.5px;font-family:ui-monospace,Consolas,"SF Mono",monospace}
 svg.chart rect.bar{fill:var(--bar);rx:2}
 svg.chart rect.hit{fill:transparent;cursor:pointer}
 svg.chart g.col:hover rect.bar{fill:var(--ink)}
@@ -124,21 +122,37 @@ svg.chart circle.cur{fill:var(--bar);stroke:var(--surface);stroke-width:2}
 svg.chart line.cross{stroke:var(--line);stroke-width:1}
 .tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:7px;
   box-shadow:var(--shadow);padding:7px 10px;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5}
-.tip b{font-family:"IBM Plex Mono",monospace}
+.tip b{font-family:ui-monospace,Consolas,"SF Mono",monospace}
 details.tbl{margin-top:12px}
 details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight:600}
 details.tbl summary:hover{color:var(--ink)}
 
+/* Excel'deki formül çubuğu */
+.fbar{display:flex;align-items:center;margin-bottom:6px;border:1px solid var(--line);border-radius:4px;
+  background:var(--surface);overflow:hidden}
+.fbar .fadr{min-width:96px;padding:5px 9px;font:12.5px ui-monospace,Consolas,"SF Mono",monospace;color:var(--ink-2);
+  background:var(--surface-2);border-right:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fbar .fx{padding:0 10px;font:italic 600 13px Calibri,"Segoe UI",serif;color:var(--muted);border-right:1px solid var(--line)}
+.fbar input{flex:1;border:0;outline:none;padding:5px 10px;background:transparent;font-size:13.5px;min-width:0}
 /* ---------- grid ---------- */
 .grid-scroll{position:relative;overflow:auto;max-height:calc(100vh - 200px);background:var(--surface);
   border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);outline:none}
-table.grid{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:12.5px;
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+table.grid{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:13.5px;
+  font-family:Calibri,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
 table.grid th,table.grid td{height:30px;padding:0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);background:var(--surface)}
-table.grid thead th{position:sticky;top:0;z-index:3;background:var(--surface-2);color:var(--muted);
-  font-family:Archivo,sans-serif;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;
-  text-align:left;cursor:pointer;user-select:none;white-space:normal;line-height:1.15;padding:4px 7px;vertical-align:bottom}
+table.grid thead th{position:sticky;top:20px;z-index:3;background:var(--surface-2);color:var(--ink-2);
+  font-family:Calibri,"Segoe UI",sans-serif;font-size:11.5px;font-weight:600;
+  text-align:left;cursor:pointer;user-select:none;white-space:normal;line-height:1.15;padding:4px 7px;vertical-align:bottom;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* Excel'deki harf şeridi ve satır numaraları */
+table.grid thead tr.harf th{position:sticky;top:0;z-index:4;height:20px;padding:0;text-align:center;
+  font-size:11px;font-weight:400;color:var(--muted);background:var(--surface-2);
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:default}
+table.grid thead tr.harf th.on,table.grid thead th.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+table.grid td.rownum,table.grid th.rownum{background:var(--surface-2);color:var(--muted);text-align:center;
+  font-size:11px;border-right:1px solid var(--line);cursor:default}
+table.grid td.rownum.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
 table.grid thead th:hover{color:var(--ink)}
 table.grid thead th .dir{color:var(--accent)}
 table.grid th.frz,table.grid td.frz{position:sticky;z-index:2}
@@ -160,14 +174,14 @@ tr.kapali td{color:var(--muted)}
 .pie-seg{cursor:default;transition:opacity .12s}
 .pie-wrap.hover .pie-seg{opacity:.35}
 .pie-wrap.hover .pie-seg.on{opacity:1}
-.pie-mid{font:600 15px "IBM Plex Sans",system-ui,sans-serif;fill:var(--ink)}
-.pie-sub{font:11.5px "IBM Plex Sans",system-ui,sans-serif;fill:var(--muted)}
+.pie-mid{font:600 15px Calibri,"Segoe UI",sans-serif;fill:var(--ink)}
+.pie-sub{font:11.5px Calibri,"Segoe UI",sans-serif;fill:var(--muted)}
 .pie-leg{flex:1;min-width:210px;display:flex;flex-direction:column;gap:5px}
 .pie-leg .row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:2px 0;cursor:default}
 .pie-leg .chip{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
 .pie-leg .ad{flex:1;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pie-leg .adet{font-family:"IBM Plex Mono",monospace;color:var(--ink)}
-.pie-leg .pay{font-family:"IBM Plex Mono",monospace;color:var(--muted);width:46px;text-align:right}
+.pie-leg .adet{font-family:ui-monospace,Consolas,"SF Mono",monospace;color:var(--ink)}
+.pie-leg .pay{font-family:ui-monospace,Consolas,"SF Mono",monospace;color:var(--muted);width:46px;text-align:right}
 td.wknd{background:var(--surface-2)}
 table.grid tbody tr:hover td:not(.calc):not(.wk){background:var(--surface-2)}
 td.inrange{background:var(--accent-soft)!important}
@@ -175,31 +189,31 @@ td.active{outline:2px solid var(--accent);outline-offset:-2px;position:relative;
 td.spacer{border:0;padding:0;background:var(--surface)}
 /* Boş ızgara yönlendirmesi yatay kaydırmadan etkilenmesin diye sola sabitlenir. */
 .emptybox{position:sticky;left:0;width:min(640px,90vw);padding:26px 18px 30px;white-space:normal;
-  font-family:"IBM Plex Sans",sans-serif;text-align:left}
+  font-family:Calibri,"Segoe UI",sans-serif;text-align:left}
 .emptybox b{display:block;font-size:15px;font-weight:600;margin-bottom:6px}
 .emptybox p{margin:0 0 6px;font-size:13px;color:var(--muted);line-height:1.5}
 input.cellin{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0 6px;background:var(--surface);
-  font:inherit;font-family:"IBM Plex Mono",monospace;text-align:inherit;outline:2px solid var(--accent);outline-offset:-2px}
+  font:inherit;font-family:ui-monospace,Consolas,"SF Mono",monospace;text-align:inherit;outline:2px solid var(--accent);outline-offset:-2px}
 td.editing{position:relative;padding:0}
 .gridbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;font-size:12.5px;color:var(--muted)}
-.gridbar b{color:var(--ink);font-family:"IBM Plex Mono",monospace}
-.gridbar kbd{font-family:"IBM Plex Mono",monospace;font-size:11px;border:1px solid var(--line);border-bottom-width:2px;
+.gridbar b{color:var(--ink);font-family:ui-monospace,Consolas,"SF Mono",monospace}
+.gridbar kbd{font-family:ui-monospace,Consolas,"SF Mono",monospace;font-size:11px;border:1px solid var(--line);border-bottom-width:2px;
   border-radius:4px;padding:0 4px;background:var(--surface);color:var(--ink-2)}
 .combo{position:fixed;z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:9px;
-  box-shadow:var(--shadow);max-height:290px;overflow-y:auto;padding:4px;font-family:"IBM Plex Sans",sans-serif;font-size:13px}
+  box-shadow:var(--shadow);max-height:290px;overflow-y:auto;padding:4px;font-family:Calibri,"Segoe UI",sans-serif;font-size:13px}
 .combo .ci{display:flex;align-items:baseline;gap:9px;padding:6px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .combo .ci[aria-selected="true"]{background:var(--accent-soft)}
 .combo .ci .ad{font-weight:600}
-.combo .ci .tip{color:var(--ink-2);font-family:"IBM Plex Mono",monospace;font-size:12px}
-.combo .ci .kod{margin-left:auto;padding-left:14px;color:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+.combo .ci .tip{color:var(--ink-2);font-family:ui-monospace,Consolas,"SF Mono",monospace;font-size:12px}
+.combo .ci .kod{margin-left:auto;padding-left:14px;color:var(--muted);font-family:ui-monospace,Consolas,"SF Mono",monospace;font-size:11.5px}
 .combo mark{background:none;color:var(--accent);font-weight:700}
 .combo .none{padding:11px;color:var(--muted)}
 .combo .head{padding:5px 9px 6px;color:var(--muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
-  font-family:Archivo,sans-serif;font-weight:600;border-bottom:1px solid var(--line-soft);margin-bottom:3px}
+  font-family:Calibri,"Segoe UI",sans-serif;font-weight:600;border-bottom:1px solid var(--line-soft);margin-bottom:3px}
 .panelbox{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
   padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
 .panelbox h3{margin:0;font-size:14px;font-weight:600}
-.panelbox textarea{width:100%;min-height:140px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+.panelbox textarea{width:100%;min-height:140px;font-family:ui-monospace,Consolas,"SF Mono",monospace;font-size:11.5px;
   border:1px solid var(--line);border-radius:7px;padding:8px;background:var(--surface-2);color:var(--ink);resize:vertical}
 .panelbox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .month-nav{display:flex;align-items:center;gap:4px}
@@ -281,10 +295,15 @@ td.editing{position:relative;padding:0}
       <button class="btn sm danger" id="btnClear2">Boşalt</button>
       <button class="btn primary" id="btnNew">Yeni iş emri</button>
     </div>
+    <div class="fbar">
+      <span class="fadr" id="fAdr">A1</span>
+      <span class="fx">fx</span>
+      <input id="fIn" spellcheck="false" aria-label="Formül çubuğu">
+    </div>
     <div class="grid-scroll" id="gridScroll" tabindex="0" role="grid" aria-label="2025 iş emirleri">
       <table class="grid" id="grid">
         <colgroup id="gridCols"></colgroup>
-        <thead><tr id="gridHead"></tr></thead>
+        <thead><tr class="harf" id="gridLetters"></tr><tr id="gridHead"></tr></thead>
         <tbody id="gridBody"></tbody>
       </table>
     </div>
@@ -416,7 +435,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "43";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "44";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -815,8 +834,10 @@ function setView(v){
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>setView(t.dataset.view)));
 
 /* ---------- İŞ EMİRLERİ IZGARASI ---------- */
-const ROWH=30, HEADH=38;
+const ROWH=30, HEADH=58;
+function colLetter(i){ let n=i, s=""; while(n>=0){ s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; } return s; }
 const BASE_COLS=[
+  {k:"_no",  t:"",                   w:42,  rownum:true, frozen:true},
   {k:"ie",   t:"İş Emri",            w:112, type:"text", frozen:true},
   {k:"kod",  t:"Stok Kodu",          w:106, type:"code", frozen:true},
   {k:"urun", t:"Ürün",               w:224, type:"product", frozen:true},
@@ -843,7 +864,7 @@ const BASE_COLS=[
   {c:"V",    t:"Hammadde Firesi",    w:92, calc:true, dec:2}
 ];
 let cols=[], gridRows=[], monthKey="", sortK="", sortDir=1;
-let sel={r:0,c:0,ar:0,ac:0}, editing=null, headBuilt="", monthAuto=true, firstData=false;
+let sel={r:0,c:1,ar:0,ac:1}, editing=null, headBuilt="", monthAuto=true, firstData=false;
 
 function oneNum(s){
   s=String(s==null?"":s).trim().replace(/\s|₺|%/g,"");
@@ -857,8 +878,35 @@ function isSum(t){
   const x=String(t==null?"":t).replace(/^=/,"").replace(/\s/g,"");
   return /^[-+]?[\d.,]+([-+][\d.,]+)+$/.test(x);
 }
+/* Excel alışkanlığı: hücreye =12*8+5 ya da (3+4)*2 yazılabilsin.
+   eval yok; yalnızca sayı, dört işlem ve parantez tanınır, başka bir şey varsa null döner. */
+function hesapla(ifade){
+  const x=String(ifade||"").replace(/\s/g,"").replace(/,/g,".");
+  if(!/^[-+*/().\d]+$/.test(x) || !/\d/.test(x)) return null;
+  let i=0;
+  function carpan(){
+    if(x[i]==="("){ i++; const v=toplam(); if(x[i]===")") i++; return v; }
+    if(x[i]==="-"){ i++; return -carpan(); }
+    if(x[i]==="+"){ i++; return carpan(); }
+    let n=""; while(i<x.length && /[\d.]/.test(x[i])) n+=x[i++];
+    return n===""?NaN:Number(n);
+  }
+  function carpim(){
+    let v=carpan();
+    while(x[i]==="*"||x[i]==="/"){ const op=x[i++], r=carpan(); v = op==="*" ? v*r : (r?v/r:NaN); }
+    return v;
+  }
+  function toplam(){
+    let v=carpim();
+    while(x[i]==="+"||x[i]==="-"){ const op=x[i++], r=carpim(); v = op==="+" ? v+r : v-r; }
+    return v;
+  }
+  const v=toplam();
+  return (i<x.length || !isFinite(v)) ? null : v;
+}
 function parseNum(s){
-  let t=String(s==null?"":s).trim().replace(/^=/,"");
+  const ham=String(s==null?"":s).trim();
+  let t=ham.replace(/^=/,"");
   if(!t) return null;
   if(isSum(t)){
     let total=0, ok=false;
@@ -869,6 +917,7 @@ function parseNum(s){
     });
     return ok?total:null;
   }
+  if(ham.charAt(0)==="=" || /[*/()]/.test(t)){ const h=hesapla(t); if(h!=null) return h; }
   return oneNum(t);
 }
 function daysOfMonth(mk){
@@ -981,6 +1030,7 @@ function cellText(o,col,c){
 }
 function cellClass(col,o,c){
   let cl=[];
+  if(col.rownum) cl.push("rownum");
   if(col.frozen) cl.push("frz");
   if(col.lastFrz) cl.push("last-frz");
   if(col.frozen && col.k!=="ie") cl.push("hide-frz");
@@ -993,16 +1043,19 @@ function cellClass(col,o,c){
 }
 function renderHead(){
   const sig=monthKey+"|"+sortK+"|"+sortDir;
-  const cg=$("#gridCols"), hr=$("#gridHead");
+  const cg=$("#gridCols"), hr=$("#gridHead"), lr=$("#gridLetters");
   if(headBuilt!==sig){
     headBuilt=sig;
-    cg.innerHTML=""; hr.innerHTML="";
+    cg.innerHTML=""; hr.innerHTML=""; lr.innerHTML="";
     cols.forEach((col,i)=>{
       const cc=document.createElement("col"); cc.style.width=col.w+"px"; cg.appendChild(cc);
+      const lt=el("th",(col.frozen?"frz ":"")+(col.rownum?"rownum":""),col.rownum?"":colLetter(i-1));
+      if(col.frozen) lt.style.left=col.left+"px";
+      lr.appendChild(lt);
       const th=el("th",null,col.t);
       th.className=(col.frozen?"frz ":"")+(col.lastFrz?"last-frz ":"")+(col.frozen&&col.k!=="ie"?"hide-frz ":"")+((col.type==="num"||col.type==="day"||col.calc)?"num-c":"");
       if(col.frozen) th.style.left=col.left+"px";
-      const sk=col.k||col.c;
+      const sk=col.rownum ? "" : (col.k||col.c);
       if(sk && !col.weekly && col.type!=="day"){
         th.addEventListener("click",()=>{ if(sortK!==sk){sortK=sk;sortDir=1;} else if(sortDir>0){sortDir=-1;} else {sortK="";sortDir=1;} headBuilt=""; renderOrders(); });
         if(sortK===sk){ const d=el("span","dir",sortDir>0?" ▲":" ▼"); th.appendChild(d); }
@@ -1042,7 +1095,8 @@ function renderBody(){
     tr.dataset.r=r;
     cols.forEach((col,i)=>{
       if(o.kapali) tr.classList.add("kapali");
-      const cell=el("td",cellClass(col,o,c),cellText(o,col,c));
+      const cell=el("td",cellClass(col,o,c),col.rownum?String(r+1):cellText(o,col,c));
+      if(col.rownum && r===sel.r) cell.classList.add("on");
       if(col.frozen) cell.style.left=col.left+"px";
       if(r>=lo&&r<=hi&&i>=cl&&i<=ch&&!(r===sel.r&&i===sel.c)) cell.classList.add("inrange");
       if(r===sel.r&&i===sel.c) cell.classList.add("active");
@@ -1053,12 +1107,29 @@ function renderBody(){
   }
   if(end<total) frag.appendChild(spacerRow((total-end)*ROWH));
   tb.appendChild(frag);
+  Array.prototype.forEach.call($("#gridLetters").children,(th,i)=>th.classList.toggle("on",i===sel.c));
+  Array.prototype.forEach.call($("#gridHead").children,(th,i)=>th.classList.toggle("on",i===sel.c));
   const secili=gridRows[sel.r];
   $("#btnCloseOrder").textContent = secili&&secili.kapali ? "Yeniden aç" : "İş emrini kapat";
   paintCellInfo();
 }
 function spacerRow(h){
   const tr=el("tr"), td2=el("td","spacer"); td2.colSpan=cols.length; td2.style.height=h+"px"; tr.appendChild(td2); return tr;
+}
+/* Formül çubuğu: seçili hücrenin adresi ve ham içeriği; buradan da yazılabilir. */
+function paintFbar(){
+  const o=gridRows[sel.r], col=cols[sel.c], inp=$("#fIn");
+  if(!o||!col){ $("#fAdr").textContent=""; inp.value=""; inp.readOnly=true; return; }
+  $("#fAdr").textContent=colLetter(sel.c-1)+(sel.r+1)+"  "+(col.date?trDate(col.date):col.t);
+  const c=calc(o);
+  let v;
+  if(col.calc||col.rownum||col.type==="flag") v=cellText(o,col,c);
+  else if(col.type==="day") v=dayExp(o,col.date)||(o.days[col.date]==null?"":String(o.days[col.date]).replace(".",","));
+  else if(col.type==="num") v=o[col.k]==null?"":String(o[col.k]).replace(".",",");
+  else if(col.type==="select") v=o.makine?machineLabel(o.makine):"";
+  else v=o[col.k]==null?"":String(o[col.k]);
+  inp.value=v;
+  inp.readOnly = !canEdit() || !!col.calc || !!col.rownum || col.type==="flag" || col.type==="select";
 }
 function paintCellInfo(){
   const o=gridRows[sel.r], col=cols[sel.c];
@@ -1070,6 +1141,7 @@ function paintCellInfo(){
   $("#cellInfo").appendChild(el("b",null,o.ie||"—"));
   $("#cellInfo").appendChild(document.createTextNode(" · "+what+(v?" · ":"")));
   if(v) $("#cellInfo").appendChild(el("b",null,v));
+  paintFbar();
   if(col.calc) $("#cellInfo").appendChild(document.createTextNode(" · hesaplanan sütun, yazılamaz"));
   else if(col.type==="day"){
     const e=dayExp(o,col.date);
@@ -1122,7 +1194,7 @@ function fillMonthSel(){
 }
 /* -- yazma -- */
 function writeCell(o,col,raw){
-  if(col.calc) return false;
+  if(col.calc||col.rownum) return false;
   if(col.type==="day"){ setDay(o,col.date,raw); return true; }
   if(col.type==="num"){ o[col.k]=parseNum(raw); saveOrder(o); return true; }
   if(col.k==="kod"){
@@ -1137,7 +1209,7 @@ function writeCell(o,col,raw){
 /* -- gezinme -- */
 function moveTo(r,c,extend){
   sel.r=Math.max(0,Math.min(gridRows.length-1,r));
-  sel.c=Math.max(0,Math.min(cols.length-1,c));
+  sel.c=Math.max(1,Math.min(cols.length-1,c));   /* 0 numara sütunu, seçilmez */
   if(!extend){ sel.ar=sel.r; sel.ac=sel.c; }
   ensureVisible(); renderBody();
 }
@@ -1156,6 +1228,7 @@ function ensureVisible(){
 function startEdit(seedChar){
   if(!canEdit()){ saltUyar(); return; }
   const o=gridRows[sel.r], col=cols[sel.c];
+  if(col&&col.rownum) return;
   if(col&&col.type==="flag"){ toast("Bu sütun “İş emrini kapat” düğmesiyle değişir"); return; }
   if(!o||!col||col.calc){ if(col&&col.calc) toast("Bu sütun kendiliğinden hesaplanır"); return; }
   const cell=$("#gridBody td.active"); if(!cell) return;
@@ -1306,7 +1379,7 @@ function clearRange(){
   if(!canEdit()){ saltUyar(); return; }
   const g=selRange(); const hit=new Set();
   for(let r=g.r0;r<=g.r1;r++) for(let c=g.c0;c<=g.c1;c++){
-    const col=cols[c]; if(col.calc) continue;
+    const col=cols[c]; if(col.calc||col.rownum) continue;
     const o=gridRows[r];
     if(col.type==="day") clearDay(o,col.date);
     else o[col.k]= col.type==="num" ? null : "";
@@ -1320,7 +1393,7 @@ function fillDown(){
   if(g.r1<=g.r0){ toast("Önce doldurulacak satırları seç (Shift + aşağı ok)"); return; }
   const src=gridRows[g.r0], hit=new Set();
   for(let c=g.c0;c<=g.c1;c++){
-    const col=cols[c]; if(col.calc) continue;
+    const col=cols[c]; if(col.calc||col.rownum) continue;
     for(let r=g.r0+1;r<=g.r1;r++){
       const o=gridRows[r];
       if(col.type==="day"){
@@ -1386,6 +1459,15 @@ $("#gridScroll").addEventListener("mousedown",e=>{
   renderBody(); $("#gridScroll").focus();
 });
 $("#gridScroll").addEventListener("dblclick",e=>{ if(e.target.closest("td")) startEdit(null); });
+$("#fIn").addEventListener("keydown",e=>{
+  const o=gridRows[sel.r], col=cols[sel.c];
+  if(e.key==="Enter"){
+    e.preventDefault();
+    if(!o||!col||$("#fIn").readOnly){ $("#gridScroll").focus(); return; }
+    writeCell(o,col,$("#fIn").value);
+    renderBody(); $("#gridScroll").focus();
+  } else if(e.key==="Escape"){ e.preventDefault(); paintFbar(); $("#gridScroll").focus(); }
+});
 $("#gridScroll").addEventListener("keydown",e=>{
   if(editing) return;
   if(!gridRows.length) return;
@@ -1397,7 +1479,7 @@ $("#gridScroll").addEventListener("keydown",e=>{
   else if(k==="Tab"){ e.preventDefault(); moveTo(sel.r,sel.c+(ex?-1:1)); }
   else if(k==="Enter"){ e.preventDefault(); startEdit(null); }
   else if(k==="F2"){ e.preventDefault(); startEdit(null); }
-  else if(k==="Home"){ e.preventDefault(); moveTo(sel.r,0,ex); }
+  else if(k==="Home"){ e.preventDefault(); moveTo(sel.r,1,ex); }
   else if(k==="End"){ e.preventDefault(); moveTo(sel.r,cols.length-1,ex); }
   else if(k==="PageDown"){ e.preventDefault(); moveTo(sel.r+15,sel.c,ex); }
   else if(k==="PageUp"){ e.preventDefault(); moveTo(sel.r-15,sel.c,ex); }
@@ -1428,7 +1510,7 @@ $("#btnNew").addEventListener("click",()=>{
   S.orders.push(o); saveOrder(o);
   $("#oSearch").value=""; $("#oMachine").value=""; $("#oStatus").value="";
   sortK=""; sortDir=1; renderOrders();
-  const i=gridRows.indexOf(o); if(i>=0){ sel.r=i; sel.c=0; sel.ar=i; sel.ac=0; ensureVisible(); renderBody(); }
+  const i=gridRows.indexOf(o); if(i>=0){ sel.r=i; sel.c=1; sel.ar=i; sel.ac=1; ensureVisible(); renderBody(); }
   toast("Satır eklendi — stok kodunu girince ürün bilgileri dolar");
 });
 $("#btnCloseOrder").addEventListener("click",()=>{
@@ -1447,7 +1529,7 @@ function focusOrder(ie){
   $("#oSearch").value=""; $("#oMachine").value=""; $("#oStatus").value="";
   renderOrders();
   const i=gridRows.findIndex(o=>o.ie===ie);
-  if(i>=0){ sel.r=i; sel.c=0; sel.ar=i; sel.ac=0; ensureVisible(); renderBody(); $("#gridScroll").focus(); }
+  if(i>=0){ sel.r=i; sel.c=1; sel.ar=i; sel.ac=1; ensureVisible(); renderBody(); $("#gridScroll").focus(); }
 }
 function svgEl(t,a){ const e=document.createElementNS("http://www.w3.org/2000/svg",t); for(const k in a) e.setAttribute(k,a[k]); return e; }
 /* Makine payı halkası: ilk yedi makine kendi rengini alır, kalanlar "Diğer"de toplanır.
@@ -1581,7 +1663,7 @@ function setDay(o,date,text){
   if(v==null) return;
   if(!v){ clearDay(o,date); saveOrder(o); return; }
   o.days[date]=v;
-  if(isSum(t)){ o.exp=o.exp||{}; o.exp[date]=t.replace(/^=/,"").replace(/\s/g,""); }
+  if(isSum(t)||t.charAt(0)==="="){ o.exp=o.exp||{}; o.exp[date]=t.replace(/\s/g,""); }
   else if(o.exp) delete o.exp[date];
   saveOrder(o);
 }
@@ -1909,14 +1991,15 @@ function buildPrint(){
   const t=el("table"), thead=el("thead"), htr=el("tr"), tb=el("tbody");
   const isNum=c=>c.type==="num"||c.calc;
   /* Sütun payları ekrandaki genişliklerden gelir; toplam %100 olduğu için tablo sayfayı tam kaplar. */
-  const totW=BASE_COLS.reduce((a,c)=>a+c.w,0), cg=el("colgroup");
-  BASE_COLS.forEach(c=>{ const cc=document.createElement("col"); cc.style.width=(c.w/totW*100).toFixed(3)+"%"; cg.appendChild(cc); });
+  const YAZ=BASE_COLS.filter(c=>!c.rownum);
+  const totW=YAZ.reduce((a,c)=>a+c.w,0), cg=el("colgroup");
+  YAZ.forEach(c=>{ const cc=document.createElement("col"); cc.style.width=(c.w/totW*100).toFixed(3)+"%"; cg.appendChild(cc); });
   t.appendChild(cg);
-  BASE_COLS.forEach(c=>{ htr.appendChild(el("th",isNum(c)?"r":null,PRINT_LABEL[c.k||c.c]||c.t)); });
+  YAZ.forEach(c=>{ htr.appendChild(el("th",isNum(c)?"r":null,PRINT_LABEL[c.k||c.c]||c.t)); });
   thead.appendChild(htr); t.appendChild(thead);
   gridRows.forEach(o=>{
     const c=calc(o), tr=el("tr");
-    BASE_COLS.forEach(col=>tr.appendChild(el("td",isNum(col)?"r":null,cellText(o,col,c))));
+    YAZ.forEach(col=>tr.appendChild(el("td",isNum(col)?"r":null,cellText(o,col,c))));
     tb.appendChild(tr);
   });
   t.appendChild(tb); area.appendChild(t);
