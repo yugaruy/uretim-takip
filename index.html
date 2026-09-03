@@ -360,7 +360,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "25";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "26";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -512,16 +512,17 @@ function productBy(kod){ return S.products.find(p => p.kod === kod) || null; }
 function calc(o){
   const P = (n0(o.cevrim)>0 && n0(o.kgoz)>0) ? 3600/n0(o.cevrim)*n0(o.kgoz) : 0;   // Teorik saatlik kapasite
   const Q = (n0(o.gcevrim)>0 && n0(o.cgoz)>0) ? 3600/n0(o.gcevrim)*n0(o.cgoz) : 0; // Gerçekleşen saatlik kapasite
-  let J = 0, son = null;
-  for (const k in o.days){ const v=n0(o.days[k]); if(v){ J+=v; if(!son||k>son) son=k; } }
-  const K = P ? J/P : 0;      // Planlanan çalışma saati
-  const L = Q ? J/Q : 0;      // Gerçekleşen çalışma saati
+  let T = 0, son = null;     // T: günlük girişlerin toplamı (hatalılar dâhil, makine bunları da üretti)
+  for (const k in o.days){ const v=n0(o.days[k]); if(v){ T+=v; if(!son||k>son) son=k; } }
+  const J = Math.max(T-n0(o.hatali), 0);  // Gerçekleşen üretim: hatalılar düşülmüş sağlam adet
+  const K = P ? T/P : 0;      // Planlanan çalışma saati
+  const L = Q ? T/Q : 0;      // Gerçekleşen çalışma saati
   const M = (!L || L<K) ? 0 : 1-(K/L);  // Sapma oranı
   const N = Math.max(L-K,0);            // Fazla çalışma
   const pr = productBy(o.kod);
   const V = pr && pr.gramaj ? n0(pr.gramaj)*n0(o.hatali)/1000 : 0; // Hammadde firesi (kg)
   const pct = n0(o.plan) ? J/n0(o.plan) : 0;
-  return {P:P,Q:Q,J:J,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
+  return {P:P,Q:Q,J:J,T:T,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
 }
 function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
 
