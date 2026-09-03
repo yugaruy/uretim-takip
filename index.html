@@ -201,7 +201,7 @@ td.editing{position:relative;padding:0}
   /* Tablo sayfanın tam enini kaplar: metin sütunları sararak yer açar, sayılar bölünmez. */
   #printArea table{border-collapse:collapse;width:100%;table-layout:fixed;font:8.5px system-ui,sans-serif}
   #printArea th,#printArea td{border:.4pt solid #999;padding:1.5px 3px;white-space:normal;overflow-wrap:anywhere}
-  #printArea th{background:#eee;font-weight:600;text-align:left;font-size:8px}
+  #printArea th{background:#eee;font-weight:600;text-align:left;font-size:8px;line-height:1.15;overflow-wrap:normal;hyphens:none}
   #printArea td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
   #printArea thead{display:table-header-group}
   #printArea tr{break-inside:avoid}
@@ -379,7 +379,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "28";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "29";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1533,6 +1533,11 @@ async function toClipboard(text,okMsg){
 }
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
+/* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
+const PRINT_LABEL={cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+  plan:"Plan. Üretim",J:"Gerç. Üretim",pct:"Gerç. %",K:"Plan. Saat",L:"Gerç. Saat",M:"Sapma",
+  N:"Fazla Saat",durus:"Duruş",P:"Teorik/Saat",Q:"Gerç./Saat",vardiya:"Vardiya (8 sa)",
+  R:"Teorik/24 sa",S:"Gerç./24 sa",hatali:"Hatalı",V:"Fire (kg)"};
 function buildPrint(){
   const area=$("#printArea"); area.innerHTML="";
   area.appendChild(el("h1",null,"Üretim Takip · İş Emirleri"));
@@ -1543,7 +1548,7 @@ function buildPrint(){
   const totW=BASE_COLS.reduce((a,c)=>a+c.w,0), cg=el("colgroup");
   BASE_COLS.forEach(c=>{ const cc=document.createElement("col"); cc.style.width=(c.w/totW*100).toFixed(3)+"%"; cg.appendChild(cc); });
   t.appendChild(cg);
-  BASE_COLS.forEach(c=>{ const th=el("th",isNum(c)?"r":null,c.t); htr.appendChild(th); });
+  BASE_COLS.forEach(c=>{ htr.appendChild(el("th",isNum(c)?"r":null,PRINT_LABEL[c.k||c.c]||c.t)); });
   thead.appendChild(htr); t.appendChild(thead);
   gridRows.forEach(o=>{
     const c=calc(o), tr=el("tr");
