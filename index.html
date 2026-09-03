@@ -226,7 +226,6 @@ td.editing{position:relative;padding:0}
       <button class="btn sm" id="btnEdit">Düzenlemeyi aç</button>
       <button class="btn sm" id="btnBackup">Yedek</button>
       <button class="btn sm danger" id="btnClear">Boşalt</button>
-      <button class="btn sm danger" id="btnReset">Sıfırla</button>
     </div>
   </div>
 </header>
@@ -381,7 +380,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "32";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "33";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -594,7 +593,7 @@ async function cloudBoot(){
     const v=row.veri||{}; cloudStamp=row.guncelleme;
     const bulutBos=!(v.orders&&v.orders.length)&&!(v.products&&v.products.length);
     const yerelVar=!!(S.orders.length||S.products.length);
-    if(writeKey && (dirty || (bulutBos&&yerelVar))){
+    if(writeKey && yerelVar && (dirty || bulutBos)){
       const ok=await cloudPush(true);            /* bu cihazda kaydedilmemiş değişiklik varsa önce o çıkar */
       if(!ok && cloudErr==="parola") keyOff("Parola geçersiz, düzenleme kapatıldı");
       return;
@@ -611,7 +610,7 @@ async function cloudBoot(){
 const SALT="Bu sayfa görüntüleme içindir; veriyi yalnızca yetkili kişi değiştirebilir.";
 function applyReadonly(){
   const on=canEdit();
-  ["#btnNew","#btnDelRow","#btnClear","#btnClear2","#btnReset","#btnSyncProducts","#btnNewProduct","#btnNewMachine"]
+  ["#btnNew","#btnDelRow","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine"]
     .forEach(id=>{ const b=$(id); if(b) b.hidden=!on; });
   $("#btnEdit").textContent = on&&cloudOn() ? "Düzenlemeyi kapat" : "Düzenlemeyi aç";
   $("#btnEdit").hidden = !cloudOn();
@@ -1862,7 +1861,7 @@ function table(sep){
 function clearPanel(){ return openPanel("clear",d=>{
   d.appendChild(el("h3",null,"Boşalt"));
   d.appendChild(el("p","hint","Sütun başlıkları, hesaplamalar ve ekranlar aynı kalır; işaretlediğin listelerin içi boşalır."));
-  const opts=[["İş emirleri ve günlük üretim",true],["Ürün listesi",true],["Makine listesi",false]];
+  const opts=[["İş emirleri ve günlük üretim",true],["Ürün listesi",false],["Makine listesi",false]];
   const boxes=opts.map(([lab,on])=>{
     const l=el("label"); l.style.display="flex"; l.style.alignItems="center"; l.style.gap="8px"; l.style.fontSize="13px";
     const cb=el("input"); cb.type="checkbox"; cb.checked=on;
@@ -1870,7 +1869,6 @@ function clearPanel(){ return openPanel("clear",d=>{
     d.appendChild(l); return cb;
   });
   const row=el("div","row");
-  d.appendChild(el("p","hint","Geri almak istersen “Sıfırla” Excel'deki ilk hâline döndürür."));
   const go=el("button","btn danger","Seçilenleri boşalt");
   go.addEventListener("click",()=>{
     const cO=boxes[0].checked, cP=boxes[1].checked, cM=boxes[2].checked;
@@ -1885,12 +1883,6 @@ function clearPanel(){ return openPanel("clear",d=>{
 }); }
 $("#btnClear").addEventListener("click",clearPanel);
 $("#btnClear2").addEventListener("click",clearPanel);
-$("#btnReset").addEventListener("click",()=>{
-  askConfirm("Bütün değişiklikler silinip Excel'den gelen ilk hâle dönülecek.",()=>{
-    const f=seedState();
-    replaceAll(f.orders, f.products, f.machines, "İlk hâline döndürüldü");
-  });
-});
 /* ---------- boot ---------- */
 function render(){
   if(view==="orders") renderOrders();
