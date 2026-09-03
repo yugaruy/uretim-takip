@@ -348,8 +348,12 @@ td.editing{position:relative;padding:0}
     <div class="kpis" id="dKpis"></div>
     <div class="panel"><div class="scroll"><table>
       <thead><tr>
-        <th>İş Emri</th><th>Ürün</th><th>Makine</th><th class="r">Bu gün üretilen</th>
-        <th class="r">Saat karşılığı</th><th class="r">Toplam gerçekleşen</th><th>Gerçekleşme</th>
+        <th>İş Emri</th><th>Ürün</th><th>Makine</th>
+        <th class="r">Toplam Göz</th><th class="r">Kapalı Göz</th><th class="r">Aktif Göz</th>
+        <th class="r">Teorik Çevrim (sn)</th><th class="r">Gerçek Çevrim (sn)</th>
+        <th class="r">Günlük Teorik Üretim</th><th class="r">Günlük Üretim</th>
+        <th class="r">Günlük Verim</th><th class="r">Çevrim Performansı</th><th class="r">Plan Gerçekleşme</th>
+        <th class="r">Duruş (saat)</th>
       </tr></thead>
       <tbody id="dBody"></tbody>
     </table></div></div>
@@ -453,7 +457,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "45";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "46";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -811,6 +815,8 @@ function calc(o){
   const pct = n0(o.plan) ? J/n0(o.plan) : 0;
   /* Öngörü: planlanan adedin kalanı, kesintisiz 24 saatte kaç gün sürer;
      geçmiş varsa son 10 üretim gününün ortalama hızıyla tahmini bitiş tarihi. */
+  const kapaliGoz = Math.max(n0(o.kgoz)-n0(o.cgoz), 0);
+  const cevrimPerf = (n0(o.cevrim)>0 && n0(o.gcevrim)>0) ? n0(o.cevrim)/n0(o.gcevrim) : 0;
   const kalan = Math.max(n0(o.plan)-J, 0);
   const kalanGun = (Q && kalan) ? kalan/(Q*24) : 0;
   let hiz=0;
@@ -820,7 +826,7 @@ function calc(o){
   }
   const hizGun = hiz ? kalan/hiz : 0;
   const bitis = (o.kapali||!kalan) ? "" : addDays(todayISO(), Math.max(1,Math.ceil(hizGun||kalanGun||0)));
-  return {P:P,Q:Q,J:J,T:T,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
+  return {P:P,Q:Q,J:J,T:T,kapaliGoz:kapaliGoz,cevrimPerf:cevrimPerf,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
 }
 function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
 
@@ -875,6 +881,8 @@ const BASE_COLS=[
   {k:"gcevrim", t:"Gerçekleşen Çevrim",  w:92, type:"num", dec:2},
   {k:"kgoz", t:"Kalıp Göz Sayısı",   w:78, type:"num"},
   {k:"cgoz", t:"Çalışan Göz Sayısı", w:78, type:"num"},
+  {c:"kapaliGoz",  t:"Kapalı Göz",     w:72, calc:true},
+  {c:"cevrimPerf", t:"Çevrim Performansı", w:88, calc:true, pct:true},
   {k:"makine", t:"Makine",           w:146, type:"select"},
   {k:"plan", t:"Planlanan Üretim",   w:106, type:"num"},
   {c:"J",    t:"Gerçekleşen Üretim", w:106, calc:true},
@@ -1685,50 +1693,71 @@ function renderDaily(){
   const date=$("#dDate").value;
   const list=dailyRows();
   $("#dCount").textContent = fmt(list.length)+" iş emri listeleniyor";
-  let dayTotal=0, dayHours=0, entered=0;
+  let dayTotal=0, dayHours=0, entered=0, teorikTop=0, perfTop=0, perfN=0, durusTop=0;
   const tb=$("#dBody"); tb.innerHTML="";
-  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=7; tr.appendChild(c); tb.appendChild(tr); }
+  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=14; tr.appendChild(c); tb.appendChild(tr); }
   const frag=document.createDocumentFragment();
   list.forEach(o=>{
     const c=calc(o), v=n0(o.days[date]);
-    if(v){ dayTotal+=v; entered++; if(c.Q) dayHours+=v/c.Q; }
+    const gunlukTeorik=c.R, dur=n0(durOf(o,date));
+    if(v){ dayTotal+=v; entered++; if(c.Q) dayHours+=v/c.Q; teorikTop+=gunlukTeorik; if(c.cevrimPerf){ perfTop+=c.cevrimPerf; perfN++; } }
+    durusTop+=dur;
     const tr=el("tr");
     const a=el("td"); const lk=el("button","btn sm"); lk.textContent=o.ie; lk.addEventListener("click",()=>focusOrder(o.ie)); a.appendChild(lk); tr.appendChild(a);
     const p=el("td"); p.appendChild(el("span","strong",o.urun||"—")); p.appendChild(el("span","sub",o.kod||"")); tr.appendChild(p);
     tr.appendChild(td(machineLabel(o.makine)));
+    tr.appendChild(td(o.kgoz==null?"—":fmt(o.kgoz),"r mono"));
+    tr.appendChild(td(c.kapaliGoz?fmt(c.kapaliGoz):"—","r mono"));
+    tr.appendChild(td(o.cgoz==null?"—":fmt(o.cgoz),"r mono"));
+    tr.appendChild(td(o.cevrim==null?"—":fmt2(o.cevrim),"r mono"));
+    tr.appendChild(td(o.gcevrim==null?"—":fmt2(o.gcevrim),"r mono"));
+    tr.appendChild(td(gunlukTeorik?fmt(Math.round(gunlukTeorik)):"—","r mono"));
     const inTd=el("td","r");
     const inp=el("input"); inp.type="text"; inp.className="mono"; inp.style.width="130px"; inp.style.textAlign="right";
     inp.value = dayExp(o,date) || (o.days[date]!=null ? o.days[date] : "");
     inp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" üretim adedi; vardiyaları artı ile toplayabilirsin");
     inp.title="Vardiyaları artı ile yazabilirsin: 12000+13500+11000";
-    inp.addEventListener("input", ()=>{ setDay(o, date, inp.value); renderDailyTotals(); });
+    inp.addEventListener("input", ()=>{ setDay(o, date, inp.value); });
     inp.addEventListener("change", ()=>{ renderDaily(); });
     inTd.appendChild(inp); tr.appendChild(inTd);
-    tr.appendChild(td(v&&c.Q?fmt2(v/c.Q):"—","r mono"));
-    tr.appendChild(td(fmt(c.J),"r mono"));
-    const mt=el("td"); mt.appendChild(meter(c.pct,null)); tr.appendChild(mt);
+    tr.appendChild(td(v&&gunlukTeorik?pctS(v/gunlukTeorik):"—","r mono"));
+    tr.appendChild(td(c.cevrimPerf?pctS(c.cevrimPerf):"—","r mono"));
+    tr.appendChild(td(n0(o.plan)?pctS(c.pct):"—","r mono"));
+    const durTd=el("td","r");
+    const dinp=el("input"); dinp.type="text"; dinp.className="mono"; dinp.style.width="72px"; dinp.style.textAlign="right";
+    dinp.value = durOf(o,date)==null ? "" : String(durOf(o,date)).replace(".",",");
+    dinp.placeholder="Yok";
+    dinp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" duruş saati");
+    if(!canEdit()) dinp.readOnly=true;
+    dinp.addEventListener("change", ()=>{ setDur(o,date,dinp.value); renderDaily(); });
+    durTd.appendChild(dinp); tr.appendChild(durTd);
     frag.appendChild(tr);
   });
   tb.appendChild(frag);
   const k=$("#dKpis"); k.innerHTML="";
   k.appendChild(kpi("Tarih", trDate(date), gunAdi(date)));
-  k.appendChild(kpi("Bu gün üretilen", fmt(dayTotal), "adet"));
+  k.appendChild(kpi("Günlük teorik üretim", fmt(Math.round(teorikTop)), "adet · kalıp göz ve teorik çevrimle 24 saat"));
+  k.appendChild(kpi("Günlük gerçekleşen üretim", fmt(dayTotal), "adet"));
+  k.appendChild(kpi("Günlük üretim verimi", teorikTop?pctS(dayTotal/teorikTop):"—", "gerçekleşen / teorik"));
+  k.appendChild(kpi("Ortalama çevrim performansı", perfN?pctS(perfTop/perfN):"—", "teorik çevrim / gerçekleşen çevrim"));
+  k.appendChild(kpi("Toplam duruş", durusTop?fmt1(durusTop)+" saat":"Yok", "bu güne girilen duruşlar"));
   k.appendChild(kpi("Toplam çalışma", fmt2(dayHours), "saat (gerçekleşen kapasiteye göre)"));
-  k.appendChild(kpi("Girdi yapılan iş emri", fmt(entered), "adet"));
-}
-function renderDailyTotals(){
-  const date=$("#dDate").value; let t=0,h=0,e=0;
-  S.orders.forEach(o=>{ const v=n0(o.days[date]); if(v){ const c=calc(o); t+=v; e++; if(c.Q) h+=v/c.Q; } });
-  const k=$("#dKpis");
-  if(k.children[1]) k.children[1].querySelector(".val").textContent=fmt(t);
-  if(k.children[2]) k.children[2].querySelector(".val").textContent=fmt2(h);
-  if(k.children[3]) k.children[3].querySelector(".val").textContent=fmt(e);
 }
 function gunAdi(iso){ const w=(parseISO(iso).getUTCDay()+6)%7; return ["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"][w]; }
 function kpi(label,val,foot){
   const d=el("div","kpi"); d.appendChild(el("div","eyebrow",label)); d.appendChild(el("div","val",val));
   if(foot) d.appendChild(el("div","foot",foot));
   return d;
+}
+/* Güne ait duruş saati. İş emrinin toplam duruşu bu girişlerin toplamı olarak güncellenir. */
+function durOf(o,date){ return o.dur && o.dur[date]!=null ? o.dur[date] : null; }
+function durToplam(o){ let t=0; for(const k in (o.dur||{})) t+=n0(o.dur[k]); return t; }
+function setDur(o,date,text){
+  const v=parseNum(text);
+  o.dur=o.dur||{};
+  if(v==null||!v) delete o.dur[date]; else o.dur[date]=v;
+  if(Object.keys(o.dur).length){ o.durus=durToplam(o); } else delete o.dur;
+  saveOrder(o);
 }
 function dayExp(o,date){ return o.exp && o.exp[date] ? o.exp[date] : ""; }
 function clearDay(o,date){ delete o.days[date]; if(o.exp) delete o.exp[date]; }
@@ -2058,7 +2087,7 @@ async function toClipboard(text,okMsg){
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
 /* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
-const PRINT_LABEL={kapali:"Durum",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",bitis:"Bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+const PRINT_LABEL={kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",bitis:"Bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
   plan:"Plan. Üretim",J:"Gerç. Üretim",pct:"Gerç. %",K:"Plan. Saat",L:"Gerç. Saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Teorik/Saat",Q:"Gerç./Saat",vardiya:"Vardiya (8 sa)",
   R:"Teorik/24 sa",S:"Gerç./24 sa",hatali:"Hatalı",V:"Fire (kg)"};
