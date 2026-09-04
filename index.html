@@ -721,9 +721,11 @@ async function cloudTryKey(k){
     return govde.indexOf("yetkisiz")>=0 ? "parola" : "sunucu";
   }catch(e){ return "ag"; }
 }
-/* Başkası kaydettiyse çek. Kendi yazımız bekliyorsa ya da hücre düzenleniyorsa dokunma. */
+/* Tablo içindeki bir kutuya yazılıyorsa tabloyu baştan kurma; imleç kaçar, sayfa kayar. */
+function yazimAcik(){ const a=document.activeElement; return !!(a && a.tagName==="INPUT" && a.closest && a.closest("tbody")); }
+/* Başkası kaydettiyse çek. Kendi yazımız bekliyorsa, hücre düzenleniyorsa ya da bir kutuya yazılıyorsa dokunma. */
 async function cloudPull(zorla){
-  if(!cloudOn()||dirty||editing) return;
+  if(!cloudOn()||dirty||editing||yazimAcik()) return;
   try{
     const t=await cloudRow("guncelleme"); if(!t) return;
     if(!zorla && t.guncelleme===cloudStamp){ if(cloudErr==="okuma"){ cloudErr=""; paintStatus(); } return; }
@@ -2006,16 +2008,24 @@ function renderProducts(){
   const frag=document.createDocumentFragment();
   list.forEach(p=>{
     const tr=el("tr");
+    /* Hesaplanan üç hücre yerinde tazelenir; tabloyu baştan kurmak yazarken imleci kaçırıyordu. */
+    const v0=verim(p);
+    const tdSaat=td(v0.saat?fmt(v0.saat):"—","r mono strong");
+    const tdVardiya=td(v0.vardiya?fmt(v0.vardiya):"—","r mono");
+    const tdGun=td(v0.gun?fmt(v0.gun):"—","r mono");
+    const tazele=()=>{ const v=verim(p);
+      tdSaat.textContent=v.saat?fmt(v.saat):"—";
+      tdVardiya.textContent=v.vardiya?fmt(v.vardiya):"—";
+      tdGun.textContent=v.gun?fmt(v.gun):"—"; };
     tr.appendChild(cellInput(p,"kod","text",null,()=>{renderOrders();}));
     tr.appendChild(cellInput(p,"ad","text"));
-    tr.appendChild(cellInput(p,"cevrim","number","r",()=>renderProducts()));
-    tr.appendChild(cellInput(p,"goz","number","r",()=>renderProducts()));
+    tr.appendChild(cellInput(p,"cevrim","number","r",tazele));
+    tr.appendChild(cellInput(p,"goz","number","r",tazele));
     tr.appendChild(cellInput(p,"net","number","r"));
     tr.appendChild(cellInput(p,"gramaj","number","r"));
-    const v=verim(p);
-    tr.appendChild(td(v.saat?fmt(v.saat):"—","r mono strong"));
-    tr.appendChild(td(v.vardiya?fmt(v.vardiya):"—","r mono"));
-    tr.appendChild(td(v.gun?fmt(v.gun):"—","r mono"));
+    tr.appendChild(tdSaat);
+    tr.appendChild(tdVardiya);
+    tr.appendChild(tdGun);
     tr.appendChild(td(fmt(use[p.kod]||0),"r mono"));
     const a=el("td","r");
     const del=el("button","btn sm danger","Sil");
