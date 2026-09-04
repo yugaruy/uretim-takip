@@ -7,6 +7,9 @@
   --ok:#217346; --ok-soft:#e6f0ea; --warn:#9c5c0d; --warn-soft:#fdf1dc; --crit:#c00000; --crit-soft:#fbe4e4;
   --bar:#217346; --bar-soft:#cfe3d7;
   --shadow:0 1px 2px rgba(16,21,25,.06),0 8px 24px rgba(16,21,25,.08);
+  /* Excel benzeri sütun grubu renkleri (başlık şeridi) */
+  --gh-ink:#1a1a1a; --gh-kimlik:#c6e0b4; --gh-cevrim:#ffe699; --gh-goz:#d9c9ec;
+  --gh-makine:#f8cbad; --gh-uretim:#bdd7ee; --gh-hata:#f3b9b9; --gh-line:rgba(0,0,0,.14);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -15,6 +18,8 @@
     --accent:#4caf7d; --accent-ink:#0d1b13; --accent-soft:#1e3a2c; --accent-line:#356b4e;
     --ok:#4caf7d; --ok-soft:#1e3a2c; --warn:#d69141; --warn-soft:#33240f; --crit:#f07070; --crit-soft:#3a1d1d;
     --bar:#4caf7d; --bar-soft:#2a4b3a;
+    --gh-ink:#ececec; --gh-kimlik:#2f4a34; --gh-cevrim:#4a4023; --gh-goz:#3b3350;
+    --gh-makine:#4d3527; --gh-uretim:#263c4f; --gh-hata:#4a2a2a; --gh-line:rgba(255,255,255,.16);
     --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
   }
 }
@@ -24,6 +29,8 @@
   --accent:#4caf7d; --accent-ink:#0d1b13; --accent-soft:#1e3a2c; --accent-line:#356b4e;
   --ok:#4caf7d; --ok-soft:#1e3a2c; --warn:#d69141; --warn-soft:#33240f; --crit:#f07070; --crit-soft:#3a1d1d;
   --bar:#4caf7d; --bar-soft:#2a4b3a;
+  --gh-ink:#ececec; --gh-kimlik:#2f4a34; --gh-cevrim:#4a4023; --gh-goz:#3b3350;
+  --gh-makine:#4d3527; --gh-uretim:#263c4f; --gh-hata:#4a2a2a; --gh-line:rgba(255,255,255,.16);
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box}
@@ -201,6 +208,17 @@ tr.kapali td{color:var(--muted)}
 .util-alt{font:10.5px Calibri,"Segoe UI",sans-serif;fill:var(--muted)}
 td.wknd{background:var(--surface-2)}
 table.grid tbody tr:hover td:not(.calc):not(.wk){background:var(--surface-2)}
+/* Sütun grupları: Excel'deki renkli başlık şeridi. Seçili sütun vurgusu (.on) bozulmasın. */
+table.grid thead th.g-kimlik:not(.on){background:var(--gh-kimlik);color:var(--gh-ink);border-bottom-color:var(--gh-line)}
+table.grid thead th.g-cevrim:not(.on){background:var(--gh-cevrim);color:var(--gh-ink);border-bottom-color:var(--gh-line)}
+table.grid thead th.g-goz:not(.on){background:var(--gh-goz);color:var(--gh-ink);border-bottom-color:var(--gh-line)}
+table.grid thead th.g-makine:not(.on){background:var(--gh-makine);color:var(--gh-ink);border-bottom-color:var(--gh-line)}
+table.grid thead th.g-uretim:not(.on){background:var(--gh-uretim);color:var(--gh-ink);border-bottom-color:var(--gh-line)}
+table.grid thead th.g-hata:not(.on){background:var(--gh-hata);color:var(--gh-ink);border-bottom-color:var(--gh-line)}
+table.grid thead th[class*="g-"]{text-align:center;font-weight:700}
+/* Dikkat çeken hücreler: Excel'deki koşullu dolgu. */
+table.grid tbody td.fill-bad{background:var(--crit-soft);color:var(--crit);font-weight:600}
+table.grid tbody td.fill-ok{background:var(--ok-soft);color:var(--ok);font-weight:600}
 td.inrange{background:var(--accent-soft)!important}
 td.active{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:6;background:var(--surface)!important}
 td.spacer{border:0;padding:0;background:var(--surface)}
@@ -888,36 +906,36 @@ const ROWH=30, HEADH=58;
 function colLetter(i){ let n=i, s=""; while(n>=0){ s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; } return s; }
 const BASE_COLS=[
   {k:"_no",  t:"",                   w:42,  rownum:true, frozen:true},
-  {k:"ie",   t:"İş Emri",            w:112, type:"text", frozen:true},
-  {k:"kod",  t:"Stok Kodu",          w:106, type:"code", frozen:true},
-  {k:"urun", t:"Ürün",               w:224, type:"product", frozen:true},
-  {k:"kapali",  t:"Durum",               w:64, type:"flag"},
-  {k:"cevrim",  t:"Çevrim Süresi",       w:84, type:"num", dec:2},
-  {k:"gcevrim", t:"Gerçekleşen Çevrim",  w:92, type:"num", dec:2},
-  {k:"kgoz", t:"Kalıp Göz Sayısı",   w:78, type:"num"},
-  {k:"cgoz", t:"Çalışan Göz Sayısı", w:78, type:"num"},
-  {c:"kapaliGoz",  t:"Kapalı Göz",     w:72, calc:true},
-  {c:"cevrimPerf", t:"Çevrim Performansı", w:88, calc:true, pct:true},
-  {k:"makine", t:"Makine",           w:146, type:"select"},
-  {k:"plan", t:"Planlanan Üretim",   w:106, type:"num"},
-  {c:"J",    t:"Gerçekleşen Üretim", w:106, calc:true},
-  {c:"pct",  t:"Gerçekleşme",        w:104, calc:true, meter:true},
-  {c:"kalan",    t:"Kalan Adet",      w:86, calc:true},
-  {c:"kalanGun", t:"Kalan Gün (24 sa)", w:82, calc:true, dec:true},
-  {c:"hizGun",   t:"Bu Hızla Gün",    w:82, calc:true, dec:true},
-  {c:"bitis",    t:"Tahmini Bitiş",   w:92, calc:true, tarih:true},
-  {c:"K",    t:"Planlanan Çalışma Saati", w:96, calc:true, dec:2},
-  {c:"L",    t:"Gerçekleşen Çalışma",     w:96, calc:true, dec:2},
-  {c:"M",    t:"Sapma Oranı",        w:82, calc:true, pct:true},
-  {c:"N",    t:"Fazla Çalışma",      w:86, calc:true, dec:2},
-  {k:"durus",t:"Arıza / Duruş",      w:82, type:"num", dec:2},
-  {c:"P",    t:"Teorik Saatlik Kapasite",  w:94, calc:true},
-  {c:"Q",    t:"Gerçekleşen Saatlik",      w:94, calc:true},
-  {c:"vardiya", t:"Teorik Vardiya (8 sa)", w:96, calc:true},
-  {c:"R",    t:"Teorik 24 Saatlik",        w:96, calc:true},
-  {c:"S",    t:"Gerçekleşen 24 Saatlik",   w:96, calc:true},
-  {k:"hatali", t:"Hatalı Üretim",    w:88, type:"num"},
-  {c:"V",    t:"Hammadde Firesi",    w:92, calc:true, dec:2}
+  {k:"ie", g:"kimlik",   t:"İş Emri",            w:112, type:"text", frozen:true},
+  {k:"kod", g:"kimlik",  t:"Stok Kodu",          w:106, type:"code", frozen:true},
+  {k:"urun", g:"kimlik", t:"Ürün",               w:224, type:"product", frozen:true},
+  {k:"kapali", g:"kimlik",  t:"Durum",               w:64, type:"flag"},
+  {k:"cevrim", g:"cevrim",  t:"Çevrim Süresi",       w:84, type:"num", dec:2},
+  {k:"gcevrim", g:"cevrim", t:"Gerçekleşen Çevrim",  w:92, type:"num", dec:2},
+  {k:"kgoz", g:"goz", t:"Kalıp Göz Sayısı",   w:78, type:"num"},
+  {k:"cgoz", g:"goz", t:"Çalışan Göz Sayısı", w:78, type:"num"},
+  {c:"kapaliGoz", g:"goz",  t:"Kapalı Göz",     w:72, calc:true},
+  {c:"cevrimPerf", g:"cevrim", t:"Çevrim Performansı", w:88, calc:true, pct:true},
+  {k:"makine", g:"makine", t:"Makine",           w:146, type:"select"},
+  {k:"plan", g:"uretim", t:"Planlanan Üretim",   w:106, type:"num"},
+  {c:"J", g:"uretim",    t:"Gerçekleşen Üretim", w:106, calc:true},
+  {c:"pct", g:"uretim",  t:"Gerçekleşme",        w:104, calc:true, meter:true},
+  {c:"kalan", g:"uretim",    t:"Kalan Adet",      w:86, calc:true},
+  {c:"kalanGun", g:"uretim", t:"Kalan Gün (24 sa)", w:82, calc:true, dec:true},
+  {c:"hizGun", g:"uretim",   t:"Bu Hızla Gün",    w:82, calc:true, dec:true},
+  {c:"bitis", g:"uretim",    t:"Tahmini Bitiş",   w:92, calc:true, tarih:true},
+  {c:"K", g:"uretim",    t:"Planlanan Çalışma Saati", w:96, calc:true, dec:2},
+  {c:"L", g:"uretim",    t:"Gerçekleşen Çalışma",     w:96, calc:true, dec:2},
+  {c:"M", g:"uretim",    t:"Sapma Oranı",        w:82, calc:true, pct:true},
+  {c:"N", g:"uretim",    t:"Fazla Çalışma",      w:86, calc:true, dec:2},
+  {k:"durus", g:"uretim",t:"Arıza / Duruş",      w:82, type:"num", dec:2},
+  {c:"P", g:"uretim",    t:"Teorik Saatlik Kapasite",  w:94, calc:true},
+  {c:"Q", g:"uretim",    t:"Gerçekleşen Saatlik",      w:94, calc:true},
+  {c:"vardiya", g:"uretim", t:"Teorik Vardiya (8 sa)", w:96, calc:true},
+  {c:"R", g:"uretim",    t:"Teorik 24 Saatlik",        w:96, calc:true},
+  {c:"S", g:"uretim",    t:"Gerçekleşen 24 Saatlik",   w:96, calc:true},
+  {k:"hatali", g:"hata", t:"Hatalı Üretim",    w:88, type:"num"},
+  {c:"V", g:"hata",    t:"Hammadde Firesi",    w:92, calc:true, dec:2}
 ];
 let cols=[], gridRows=[], monthKey="", sortK="", sortDir=1;
 let sel={r:0,c:1,ar:0,ac:1}, editing=null, headBuilt="", monthAuto=true, firstData=false;
@@ -1095,7 +1113,10 @@ function cellClass(col,o,c){
   else if(col.calc) cl.push("calc");
   if(col.type==="num"||col.type==="day"||col.calc) cl.push("num-c");
   if(col.c==="M"){ const m=n0(c.M); if(m>=0.20) cl.push("dev-crit"); else if(m>=0.05) cl.push("dev-warn"); }
-  if(col.k==="gcevrim"){ const t=n0(o.cevrim), g=n0(o.gcevrim); if(t>0&&g>t) cl.push(g>=t*1.10?"dev-crit":"dev-warn"); }
+  if(col.k==="gcevrim"){ const t=n0(o.cevrim), g=n0(o.gcevrim); if(t>0&&g>t) cl.push(g>=t*1.10?"dev-crit":"dev-warn", "fill-bad"); }
+  /* Kapalı göz varsa çalışan göz kırmızı; gerçekleşen çalışma saati planı aşarsa kırmızı, aşmazsa yeşil. */
+  if(col.k==="cgoz"){ const kg=n0(o.kgoz), cgz=n0(o.cgoz); if(kg>0&&cgz>0&&cgz<kg) cl.push("fill-bad"); }
+  if(col.c==="L" && n0(c.K) && n0(c.L)) cl.push(c.L>c.K ? "fill-bad" : "fill-ok");
   return cl.join(" ");
 }
 function renderHead(){
@@ -1110,7 +1131,7 @@ function renderHead(){
       if(col.frozen) lt.style.left=col.left+"px";
       lr.appendChild(lt);
       const th=el("th",null,col.t);
-      th.className=(col.frozen?"frz ":"")+(col.lastFrz?"last-frz ":"")+(col.frozen&&col.k!=="ie"?"hide-frz ":"")+((col.type==="num"||col.type==="day"||col.calc)?"num-c":"");
+      th.className=(col.frozen?"frz ":"")+(col.lastFrz?"last-frz ":"")+(col.frozen&&col.k!=="ie"?"hide-frz ":"")+(col.g?"g-"+col.g+" ":"")+((col.type==="num"||col.type==="day"||col.calc)?"num-c":"");
       if(col.frozen) th.style.left=col.left+"px";
       const sk=col.rownum ? "" : (col.k||col.c);
       if(sk && !col.weekly && col.type!=="day"){
