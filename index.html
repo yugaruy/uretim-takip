@@ -76,6 +76,9 @@ label.field>span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
 /* ---------- table ---------- */
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
 .scroll{overflow-x:auto}
+/* Ürün ve makine listelerinde başlık satırı aşağı kaydırınca da yerinde kalsın:
+   tablo kendi içinde kaysın ki sticky başlık tutunacak bir kap bulsun. */
+#view-products>.panel>.scroll,#view-machines>.panel>.scroll{max-height:calc(100vh - 240px);overflow:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
   color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:2}
