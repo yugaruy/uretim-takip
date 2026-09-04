@@ -438,7 +438,7 @@ td.editing{position:relative;padding:0}
       <tbody id="prBody"></tbody>
     </table></div></div>
     <p class="hint" style="margin-top:10px">Bu liste iş emri girişinde referans olarak kullanılır: stok kodunu seçtiğinde ürün adı, çevrim süresi ve kalıp göz sayısı buradan dolar, hammadde firesi brüt gramajla hesaplanır.<br>
-    Sağdaki üç sütun hesaplanır, yazılamaz: <b>Saatlik Üretim</b> = 3600 / çevrim × kalıp göz sayısı, <b>Vardiya</b> bunun 8 katı, <b>Günlük</b> 24 katı. Kesintisiz üç vardiya ve %100 verim varsayımıyla, duruş ve fire hesaba katılmadan.</p>
+    Sağdaki üç sütun hesaplanır, yazılamaz: <b>Saatlik Üretim</b> = 3600 / çevrim × çalışan göz sayısı, <b>Vardiya</b> bunun 8 katı, <b>Günlük</b> 24 katı. Kesintisiz üç vardiya ve %100 verim varsayımıyla, duruş ve fire hesaba katılmadan.</p>
   </section>
 
   <!-- MACHINES -->
@@ -493,6 +493,8 @@ const pctS = v => nf1.format(n0(v)*100)+"%";
 function dISO(d){ return d.toISOString().slice(0,10); }
 function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); }
 function addDays(iso,k){ const d=parseISO(iso); d.setUTCDate(d.getUTCDate()+k); return dISO(d); }
+/* Pazar günü üretim yok; tahmini bitiş hesabında pazarlar sayılmaz. */
+function addWorkDays(iso,k){ let d=iso, n=Math.max(0,k); while(n>0){ d=addDays(d,1); if(parseISO(d).getUTCDay()!==0) n--; } return d; }
 function trDate(iso){ const d=parseISO(iso); return String(d.getUTCDate()).padStart(2,"0")+"."+String(d.getUTCMonth()+1).padStart(2,"0")+"."+d.getUTCFullYear(); }
 function shortDate(iso){ const d=parseISO(iso); return d.getUTCDate()+" "+MONTHS[d.getUTCMonth()]; }
 function weekStart(iso){ const d=parseISO(iso); const w=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-w); return dISO(d); }
@@ -812,7 +814,9 @@ function boot(){
 /* ---------- computation (2025 sayfasındaki formüllerin birebir karşılığı) ---------- */
 function productBy(kod){ return S.products.find(p => p.kod === kod) || null; }
 function calc(o){
-  const P = (n0(o.cevrim)>0 && n0(o.kgoz)>0) ? 3600/n0(o.cevrim)*n0(o.kgoz) : 0;   // Teorik saatlik kapasite
+  /* Teorik kapasite açık (çalışan) göz sayısına göre; çalışan göz girilmemişse kalıbın tamamı varsayılır. */
+  const acikGoz = n0(o.cgoz)>0 ? n0(o.cgoz) : n0(o.kgoz);
+  const P = (n0(o.cevrim)>0 && acikGoz>0) ? 3600/n0(o.cevrim)*acikGoz : 0;   // Teorik saatlik kapasite
   const Q = (n0(o.gcevrim)>0 && n0(o.cgoz)>0) ? 3600/n0(o.gcevrim)*n0(o.cgoz) : 0; // Gerçekleşen saatlik kapasite
   let T = 0, son = null;     // T: günlük girişlerin toplamı (hatalılar dâhil, makine bunları da üretti)
   for (const k in o.days){ const v=n0(o.days[k]); if(v){ T+=v; if(!son||k>son) son=k; } }
@@ -836,7 +840,7 @@ function calc(o){
     if(gunler.length) hiz = gunler.reduce((a,k)=>a+n0(o.days[k]),0)/gunler.length;
   }
   const hizGun = hiz ? kalan/hiz : 0;
-  const bitis = (o.kapali||!kalan) ? "" : addDays(todayISO(), Math.max(1,Math.ceil(hizGun||kalanGun||0)));
+  const bitis = (o.kapali||!kalan) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(hizGun||kalanGun||0)));
   return {P:P,Q:Q,J:J,T:T,kapaliGoz:kapaliGoz,cevrimPerf:cevrimPerf,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
 }
 function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
