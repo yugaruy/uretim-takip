@@ -852,14 +852,14 @@ function calc(o){
   const V = pr && pr.gramaj ? n0(pr.gramaj)*n0(o.hatali)/1000 : 0; // Hammadde firesi (kg)
   const pct = n0(o.plan) ? J/n0(o.plan) : 0;
   /* Öngörü: planlanan adedin kalanı, kesintisiz 24 saatte kaç gün sürer;
-     geçmiş varsa son 10 üretim gününün ortalama hızıyla tahmini bitiş tarihi. */
+     geçmiş varsa son 5 üretim gününün ortalama hızıyla tahmini bitiş tarihi. */
   const kapaliGoz = Math.max(n0(o.kgoz)-n0(o.cgoz), 0);
   const cevrimPerf = (n0(o.cevrim)>0 && n0(o.gcevrim)>0) ? n0(o.cevrim)/n0(o.gcevrim) : 0;
   const kalan = Math.max(n0(o.plan)-J, 0);
   const kalanGun = (Q && kalan) ? kalan/(Q*24) : 0;
   let hiz=0;
   if(kalan){
-    const gunler=Object.keys(o.days).filter(k=>n0(o.days[k])).sort().slice(-10);
+    const gunler=Object.keys(o.days).filter(k=>n0(o.days[k])).sort().slice(-5);
     if(gunler.length) hiz = gunler.reduce((a,k)=>a+n0(o.days[k]),0)/gunler.length;
   }
   const hizGun = hiz ? kalan/hiz : 0;
