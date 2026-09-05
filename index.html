@@ -516,6 +516,15 @@ function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(Da
 function addDays(iso,k){ const d=parseISO(iso); d.setUTCDate(d.getUTCDate()+k); return dISO(d); }
 /* Pazar günü üretim yok; tahmini bitiş hesabında pazarlar sayılmaz. */
 function addWorkDays(iso,k){ let d=iso, n=Math.max(0,k); while(n>0){ d=addDays(d,1); if(parseISO(d).getUTCDay()!==0) n--; } return d; }
+/* İki tarih arasındaki iş günü sayısı (pazarlar hariç, iki uç dâhil). */
+function isGunSayisi(a,b){
+  const d1=parseISO(a), d2=parseISO(b);
+  const gun=Math.floor((d2-d1)/86400000)+1;
+  if(gun<=0) return 0;
+  const ilkPazar=(7-d1.getUTCDay())%7;
+  const pazar=gun>ilkPazar ? Math.floor((gun-ilkPazar-1)/7)+1 : 0;
+  return gun-pazar;
+}
 function trDate(iso){ const d=parseISO(iso); return String(d.getUTCDate()).padStart(2,"0")+"."+String(d.getUTCMonth()+1).padStart(2,"0")+"."+d.getUTCFullYear(); }
 function shortDate(iso){ const d=parseISO(iso); return d.getUTCDate()+" "+MONTHS[d.getUTCMonth()]; }
 function weekStart(iso){ const d=parseISO(iso); const w=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-w); return dISO(d); }
@@ -863,8 +872,15 @@ function calc(o){
     if(gunler.length) hiz = gunler.reduce((a,k)=>a+n0(o.days[k]),0)/gunler.length;
   }
   const hizGun = hiz ? kalan/hiz : 0;
-  const bitis = (o.kapali||!kalan) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(hizGun||kalanGun||0)));
-  return {P:P,Q:Q,J:J,T:T,kapaliGoz:kapaliGoz,cevrimPerf:cevrimPerf,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
+  /* Olması gereken: teorik kapasiteyle kesintisiz. Olacak olan: ilk üretim gününden son girişe
+     kadarki gerçek tempo (aradaki duruş günleri de bölene girer) aynı şekilde sürerse. */
+  let ilk=null; for(const k in o.days){ if(n0(o.days[k]) && (!ilk||k<ilk)) ilk=k; }
+  const gecenGun = (ilk&&son) ? isGunSayisi(ilk,son) : 0;
+  const gercekHiz = gecenGun ? J/gecenGun : 0;
+  const gercekGun = gercekHiz ? kalan/gercekHiz : 0;
+  const bitisTeorik = (o.kapali||!kalan||!kalanGun) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(kalanGun)));
+  const bitis = (o.kapali||!kalan) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(gercekGun||hizGun||kalanGun||0)));
+  return {P:P,Q:Q,J:J,T:T,kapaliGoz:kapaliGoz,cevrimPerf:cevrimPerf,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,gercekGun:gercekGun,bitisTeorik:bitisTeorik,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
 }
 function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
 
@@ -928,7 +944,9 @@ const BASE_COLS=[
   {c:"kalan", g:"uretim",    t:"Kalan Adet",      w:86, calc:true},
   {c:"kalanGun", g:"uretim", t:"Kalan Gün (24 sa)", w:82, calc:true, dec:true},
   {c:"hizGun", g:"uretim",   t:"Bu Hızla Gün",    w:82, calc:true, dec:true},
-  {c:"bitis", g:"uretim",    t:"Tahmini Bitiş",   w:92, calc:true, tarih:true},
+  {c:"gercekGun", g:"uretim", t:"Gerçek Tempoyla Gün", w:88, calc:true, dec:true},
+  {c:"bitisTeorik", g:"uretim", t:"Olması Gereken Bitiş", w:100, calc:true, tarih:true},
+  {c:"bitis", g:"uretim",    t:"Olacak Olan Bitiş",   w:100, calc:true, tarih:true},
   {c:"K", g:"uretim",    t:"Planlanan Çalışma Saati", w:96, calc:true, dec:2},
   {c:"L", g:"uretim",    t:"Gerçekleşen Çalışma",     w:96, calc:true, dec:2},
   {c:"M", g:"uretim",    t:"Sapma Oranı",        w:82, calc:true, pct:true},
@@ -2137,7 +2155,7 @@ async function toClipboard(text,okMsg){
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
 /* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
-const PRINT_LABEL={kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",bitis:"Bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+const PRINT_LABEL={kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",gercekGun:"Gerçek gün",bitisTeorik:"Olması gereken",bitis:"Olacak olan",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
   plan:"Plan. Üretim",J:"Gerç. Üretim",pct:"Gerç. %",K:"Plan. Saat",L:"Gerç. Saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Teorik/Saat",Q:"Gerç./Saat",vardiya:"Vardiya (8 sa)",
   R:"Teorik/24 sa",S:"Gerç./24 sa",hatali:"Hatalı",V:"Fire (kg)"};
