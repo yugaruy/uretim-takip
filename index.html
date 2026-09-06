@@ -696,7 +696,7 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "54";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "55";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2549,6 +2549,19 @@ function kapasiteVeri(yil){
   S.bakim.forEach(x=>{ if(x.tarih) ekle(kutu(x.makine||""),x.tarih,"dur",n0(x.sure)); });
   return mak;
 }
+/* Kapasite tabanı: pazarlar dışındaki günler x 24 saat. Bugünden sonrası sayılmaz,
+   içinde bulunulan ay bugüne kadarki günler kadar kapasite gösterir. */
+function gunKapasite(gunler){
+  const bugun=todayISO();
+  let g=0;
+  gunler.forEach(iso=>{ if(iso<=bugun && parseISO(iso).getUTCDay()!==0) g++; });
+  return g*24;
+}
+function ayGunleri(yil,ay){
+  const son=new Date(Date.UTC(+yil,ay+1,0)).getUTCDate(), out=[];
+  for(let d=1;d<=son;d++) out.push(yil+"-"+String(ay+1).padStart(2,"0")+"-"+String(d).padStart(2,"0"));
+  return out;
+}
 /* Ayın günleri pazartesi başlangıçlı haftalara bölünür: 1. HF, 2. HF ... */
 function ayHaftalari(yil,ay){
   const ilk=yil+"-"+String(ay+1).padStart(2,"0")+"-01";
@@ -2571,25 +2584,24 @@ function kapBlok(tb,ad,hue,aylar,haftalar,vurgu){
   const mk=el("td","kap-mak"+(vurgu?" kap-hepsi":"")); mk.rowSpan=4; mk.textContent=ad;
   if(!vurgu) mk.style.setProperty("--h",hue);
   satirlar[0].insertBefore(mk,satirlar[0].firstChild);
-  const yaz=(kutu,dolu)=>{
-    const top=kutu.cal+kutu.dur;
-    kapHucre(satirlar[0], dolu&&top?fmt(top):"");
-    kapHucre(satirlar[1], dolu&&kutu.cal?fmt(kutu.cal):"");
-    kapHucre(satirlar[2], dolu&&kutu.dur?fmt(kutu.dur):"");
-    kapHucre(satirlar[3], dolu&&top?nf1.format(kutu.cal/top*100)+"%":"");
+  const yaz=kutu=>{
+    const kap=n0(kutu.kap);
+    kapHucre(satirlar[0], kap?fmt(kap):"");
+    kapHucre(satirlar[1], kap?fmt(kutu.cal):"");
+    kapHucre(satirlar[2], kap?fmt(kutu.dur):"");
+    kapHucre(satirlar[3], kap?nf1.format(kutu.cal/kap*100)+"%":"");
   };
-  let yilCal=0, yilDur=0, doluAy=0;
+  let yilKap=0, yilCal=0, yilDur=0, doluAy=0;
   aylar.forEach(a=>{
-    const dolu=(a.cal+a.dur)>0;
-    if(dolu){ yilCal+=a.cal; yilDur+=a.dur; doluAy++; }
-    yaz(a,dolu);
+    if(n0(a.kap)){ yilKap+=a.kap; yilCal+=a.cal; yilDur+=a.dur; doluAy++; }
+    yaz(a);
   });
-  /* Yıllık ortalama: veri girilmiş ayların ortalaması. */
-  const ort={cal:doluAy?yilCal/doluAy:0,dur:doluAy?yilDur/doluAy:0};
+  /* Yıllık ortalama: kapasitesi olan ayların ortalaması. */
+  const ort={kap:doluAy?yilKap/doluAy:0,cal:doluAy?yilCal/doluAy:0,dur:doluAy?yilDur/doluAy:0};
   satirlar.forEach(tr=>tr.lastChild.classList.add("kap-ay-son"));
-  yaz(ort,doluAy>0);
+  yaz(ort);
   satirlar.forEach(tr=>tr.lastChild.classList.add("kap-yil"));
-  haftalar.forEach(h=>yaz(h,(h.cal+h.dur)>0));
+  haftalar.forEach(yaz);
   satirlar.forEach(tr=>tb.appendChild(tr));
 }
 function kapasiteBolum(yil,ay){
@@ -2597,7 +2609,7 @@ function kapasiteBolum(yil,ay){
   const panel=el("div","panel"); panel.style.marginBottom="16px";
   const head=el("div","panel-head");
   head.appendChild(el("h2",null,"Makine kapasite raporu"));
-  head.appendChild(el("p",null,"Aylık çalışma ve duruş saatleri; sağdaki sütunlar "+MONTHS[ay]+" ayının haftaları"));
+  head.appendChild(el("p",null,"Kapasite pazar dışı günler × 24 saat; sağdaki sütunlar "+MONTHS[ay]+" ayının haftaları"));
   panel.appendChild(head);
   const sc=el("div","scroll"), t=el("table","kap"), th=el("thead");
   const haftalar=ayHaftalari(yil,ay);
@@ -2610,19 +2622,31 @@ function kapasiteBolum(yil,ay){
   const tb=el("tbody");
   const kodlar=machineItems(false).map(m=>m.kod).filter(k=>mak[k]);
   Object.keys(mak).forEach(k=>{ if(kodlar.indexOf(k)<0) kodlar.push(k); });
+  /* Bir ayda hiçbir makinede kayıt yoksa o ay boş kalır: veri girilmemiş ve henüz
+     gelmemiş aylar boşuna %0 çalışma göstermesin. */
+  const ayKap=[], hfKap=[];
+  for(let i=0;i<12;i++){
+    const varMi=kodlar.some(k=>mak[k].ay[i].cal||mak[k].ay[i].dur);
+    ayKap.push(varMi?gunKapasite(ayGunleri(yil,i)):0);
+  }
+  haftalar.forEach(gunler=>{
+    const varMi=kodlar.some(k=>gunler.some(g=>mak[k].gun[g]));
+    hfKap.push(varMi?gunKapasite(gunler):0);
+  });
   const toplam={ay:[],hafta:[]};
-  for(let i=0;i<12;i++) toplam.ay.push({cal:0,dur:0});
-  haftalar.forEach(()=>toplam.hafta.push({cal:0,dur:0}));
+  for(let i=0;i<12;i++) toplam.ay.push({cal:0,dur:0,kap:0});
+  haftalar.forEach(()=>toplam.hafta.push({cal:0,dur:0,kap:0}));
   kodlar.forEach(k=>{
     const m=mak[k];
-    const hf=haftalar.map(gunler=>{
-      const kutu={cal:0,dur:0};
+    const hf=haftalar.map((gunler,i)=>{
+      const kutu={cal:0,dur:0,kap:hfKap[i]};
       gunler.forEach(g=>{ const d=m.gun[g]; if(d){ kutu.cal+=d.cal; kutu.dur+=d.dur; } });
       return kutu;
     });
-    m.ay.forEach((a,i)=>{ toplam.ay[i].cal+=a.cal; toplam.ay[i].dur+=a.dur; });
-    hf.forEach((h,i)=>{ toplam.hafta[i].cal+=h.cal; toplam.hafta[i].dur+=h.dur; });
-    kapBlok(tb, k?machineLabel(k):"— makine yok —", planHue(k||"yok"), m.ay, hf, false);
+    const ay=m.ay.map((a,i)=>({cal:a.cal,dur:a.dur,kap:ayKap[i]}));
+    ay.forEach((a,i)=>{ toplam.ay[i].cal+=a.cal; toplam.ay[i].dur+=a.dur; toplam.ay[i].kap+=a.kap; });
+    hf.forEach((h,i)=>{ toplam.hafta[i].cal+=h.cal; toplam.hafta[i].dur+=h.dur; toplam.hafta[i].kap+=h.kap; });
+    kapBlok(tb, k?machineLabel(k):"— makine yok —", planHue(k||"yok"), ay, hf, false);
   });
   if(!kodlar.length){
     const tr=el("tr"), c=el("td","empty"); c.colSpan=15+haftalar.length;
@@ -3098,32 +3122,42 @@ function sheetKapasite(){
   rows.push(bas);
   const kodlar=machineItems(false).map(m=>m.kod).filter(k=>mak[k]);
   Object.keys(mak).forEach(k=>{ if(kodlar.indexOf(k)<0) kodlar.push(k); });
+  const ayKap=[], hfKap=[];
+  for(let i=0;i<12;i++){
+    const varMi=kodlar.some(k=>mak[k].ay[i].cal||mak[k].ay[i].dur);
+    ayKap.push(varMi?gunKapasite(ayGunleri(yil,i)):0);
+  }
+  haftalar.forEach(gunler=>{
+    const varMi=kodlar.some(k=>gunler.some(g=>mak[k].gun[g]));
+    hfKap.push(varMi?gunKapasite(gunler):0);
+  });
   const toplamAy=[], toplamHf=[];
-  for(let i=0;i<12;i++) toplamAy.push({cal:0,dur:0});
-  haftalar.forEach(()=>toplamHf.push({cal:0,dur:0}));
+  for(let i=0;i<12;i++) toplamAy.push({cal:0,dur:0,kap:0});
+  haftalar.forEach(()=>toplamHf.push({cal:0,dur:0,kap:0}));
   function blok(ad,aylar,hf){
     const sat=[[ad,"Toplam Kapasite"],["","Çalışma Süresi"],["","Duruş Süresi"],["","Çalışma Yüzdesi %"]];
-    let cal=0,dur=0,dolu=0;
+    let kapT=0,cal=0,dur=0,dolu=0;
     const yaz=k=>{
-      const top=k.cal+k.dur;
-      sat[0].push(top?r2(top):""); sat[1].push(k.cal?r2(k.cal):"");
-      sat[2].push(k.dur?r2(k.dur):""); sat[3].push(top?r2(k.cal/top*100):"");
+      const kap=n0(k.kap);
+      sat[0].push(kap?r2(kap):""); sat[1].push(kap?r2(k.cal):"");
+      sat[2].push(kap?r2(k.dur):""); sat[3].push(kap?r2(k.cal/kap*100):"");
     };
-    aylar.forEach(a=>{ if(a.cal+a.dur){ cal+=a.cal; dur+=a.dur; dolu++; } yaz(a); });
-    yaz({cal:dolu?cal/dolu:0,dur:dolu?dur/dolu:0});
+    aylar.forEach(a=>{ if(n0(a.kap)){ kapT+=a.kap; cal+=a.cal; dur+=a.dur; dolu++; } yaz(a); });
+    yaz({kap:dolu?kapT/dolu:0,cal:dolu?cal/dolu:0,dur:dolu?dur/dolu:0});
     hf.forEach(yaz);
     sat.forEach(r=>rows.push(r));
   }
   kodlar.forEach(k=>{
     const m=mak[k];
-    const hf=haftalar.map(gunler=>{
-      const kutu={cal:0,dur:0};
+    const hf=haftalar.map((gunler,i)=>{
+      const kutu={cal:0,dur:0,kap:hfKap[i]};
       gunler.forEach(g=>{ const d=m.gun[g]; if(d){ kutu.cal+=d.cal; kutu.dur+=d.dur; } });
       return kutu;
     });
-    m.ay.forEach((a,i)=>{ toplamAy[i].cal+=a.cal; toplamAy[i].dur+=a.dur; });
-    hf.forEach((h,i)=>{ toplamHf[i].cal+=h.cal; toplamHf[i].dur+=h.dur; });
-    blok(k?machineLabel(k):"— makine yok —",m.ay,hf);
+    const ay=m.ay.map((a,i)=>({cal:a.cal,dur:a.dur,kap:ayKap[i]}));
+    ay.forEach((a,i)=>{ toplamAy[i].cal+=a.cal; toplamAy[i].dur+=a.dur; toplamAy[i].kap+=a.kap; });
+    hf.forEach((h,i)=>{ toplamHf[i].cal+=h.cal; toplamHf[i].dur+=h.dur; toplamHf[i].kap+=h.kap; });
+    blok(k?machineLabel(k):"— makine yok —",ay,hf);
   });
   if(kodlar.length) blok("TÜM MAKİNELER",toplamAy,toplamHf);
   return rows;
