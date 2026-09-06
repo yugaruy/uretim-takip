@@ -1,3 +1,4 @@
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Üretim Takip</title>
 <style>
 :root{
@@ -263,6 +264,113 @@ td.editing{position:relative;padding:0}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--ground);
   padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.18s;z-index:60}
 .toast.on{opacity:1;transform:translateX(-50%)}
+
+/* ---------- üst araç menüsü: geniş ekranda düz şerit, dar ekranda açılır liste ---------- */
+.tools{position:relative}
+.tools>summary{display:none;list-style:none}
+.tools>summary::-webkit-details-marker{display:none}
+.tools .tools-pop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* ---------- haftalık plan çizelgesi ---------- */
+.plan-bas{display:flex;align-items:baseline;justify-content:center;gap:12px;flex-wrap:wrap;
+  background:var(--accent);color:var(--accent-ink);padding:9px 14px;text-align:center}
+.plan-bas h2{margin:0;font-size:14.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+.plan-bas span{font-size:12px;opacity:.85;font-variant-numeric:tabular-nums}
+.plan-wrap{overflow-x:auto}
+table.plan{border-collapse:collapse;width:100%;font-size:12.5px;table-layout:fixed;min-width:940px}
+table.plan th small{font-weight:600;opacity:.65;font-size:9.5px;letter-spacing:0}
+table.plan th{background:var(--accent-soft);color:var(--ink-2);border:1px solid var(--line);
+  font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;text-align:center;
+  padding:7px 6px;position:static;white-space:nowrap}
+table.plan td{border:1px solid var(--line-soft);padding:6px 8px;vertical-align:middle;text-align:center}
+table.plan td.pmak{text-align:left;font-weight:600}
+table.plan td.pmak .sub{font-weight:400}
+table.plan col.c-no{width:52px} table.plan col.c-kod{width:112px} table.plan col.c-ad{width:170px}
+table.plan col.c-gun{width:126px} table.plan col.c-not{width:270px}
+/* İş hücresi: ürün adından türeyen sabit renk; boş, arıza ve bakım kendi rengini alır. */
+td.pcell{font-weight:700;font-size:11px;line-height:1.2;text-transform:uppercase;letter-spacing:.01em;
+  background:hsl(var(--h,210) 46% 84%);color:#1a1a1a;border:1px solid rgba(0,0,0,.10)}
+td.pcell.ger{box-shadow:inset 0 -3px 0 rgba(0,0,0,.16)}
+td.pcell.bos{background:#4a90d9;color:#fff;border-color:rgba(0,0,0,.12)}
+td.pcell.arizali{background:#d32020;color:#fff;border-color:rgba(0,0,0,.12)}
+td.pcell.bakim{background:#e0a300;color:#241a00;border-color:rgba(0,0,0,.12)}
+td.pcell small{display:block;font-size:9.5px;font-weight:600;opacity:.72;letter-spacing:0;text-transform:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) td.pcell{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0;border-color:rgba(255,255,255,.12)}
+  :root:not([data-theme="light"]) td.pcell.bos{background:#2b5e94;color:#eaf2fb}
+  :root:not([data-theme="light"]) td.pcell.arizali{background:#8f2020;color:#ffecec}
+  :root:not([data-theme="light"]) td.pcell.bakim{background:#7a5c00;color:#fff4d6}}
+:root[data-theme="dark"] td.pcell{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0;border-color:rgba(255,255,255,.12)}
+:root[data-theme="dark"] td.pcell.bos{background:#2b5e94;color:#eaf2fb}
+:root[data-theme="dark"] td.pcell.arizali{background:#8f2020;color:#ffecec}
+:root[data-theme="dark"] td.pcell.bakim{background:#7a5c00;color:#fff4d6}
+td.pnot{text-align:left}
+td.pnot input{width:100%;border:1px solid transparent;background:transparent;border-radius:5px;padding:4px 6px;
+  font-size:11.5px;font-weight:600;text-transform:uppercase}
+td.pnot input:hover:not(:read-only){border-color:var(--line)}
+td.pnot input:focus{border-color:var(--accent);background:var(--surface);text-transform:none}
+td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
+.plan-leg{display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-2)}
+.plan-leg span{display:inline-flex;align-items:center;gap:6px}
+.plan-leg i{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+
+/* ---------- dar ekran: telefon ve tablet ---------- */
+@media(max-width:860px){
+  .top-in{padding:8px 12px;gap:9px}
+  .brand b{font-size:15px}
+  nav.tabs{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;padding:8px 12px;font-size:13.5px}
+  .top-right{gap:6px}
+  .saved{max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tools>summary{display:inline-flex;align-items:center;cursor:pointer}
+  .tools:not([open]) .tools-pop{display:none}
+  .tools[open] .tools-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:50;flex-direction:column;
+    align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    box-shadow:var(--shadow);padding:7px;min-width:190px}
+  .tools[open] .tools-pop .btn{text-align:left}
+  main{padding:12px}
+  /* iOS'ta alana dokununca sayfanın büyümemesi için 16 punto. */
+  input[type=text],input[type=search],input[type=number],input[type=date],select,td.pnot input{font-size:16px}
+  input[type=search]{min-width:0;width:100%}
+  .toolbar{gap:7px}
+  .toolbar>input[type=search]{flex:1 1 100%}
+  .toolbar .month-nav{flex:1 1 100%}
+  .toolbar .month-nav select,.toolbar .month-nav input[type=date]{flex:1}
+  .btn{padding:8px 13px}
+  .btn.sm{padding:7px 11px}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
+  .kpi .val{font-size:21px}
+  .grid-scroll{max-height:calc(100vh - 250px)}
+  #view-products>.panel>.scroll,#view-machines>.panel>.scroll{max-height:none}
+  .gridbar{font-size:12px}
+  .gridbar>span:last-child{display:none}
+  /* Haftalık plan telefonda makine kartlarına dönüşür: günler alt alta okunur. */
+  table.plan{min-width:0;table-layout:auto;display:block}
+  table.plan thead{display:none}
+  table.plan tbody,table.plan tr,table.plan td{display:block;width:auto}
+  table.plan tr{border:1px solid var(--line);border-radius:10px;margin:10px;overflow:hidden}
+  table.plan td{border:0;border-top:1px solid var(--line-soft);text-align:left;padding:7px 10px;
+    display:flex;align-items:center;gap:10px}
+  table.plan td.pno{display:none}
+  table.plan td.pmak{background:var(--surface-2);border-top:0;font-size:13.5px;display:block}
+  table.plan td::before{content:attr(data-l);flex:0 0 86px;font-size:10px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--muted);font-weight:700}
+  table.plan td.pmak::before,table.plan td.pkod::before{content:none}
+  table.plan td.pkod{font-family:ui-monospace,Consolas,"SF Mono",monospace;font-size:11.5px;color:var(--muted);
+    background:var(--surface-2);border-top:0;padding-top:0;display:block}
+  td.pcell{border-radius:6px;justify-content:flex-start}
+  table.plan td.pcell::before{color:inherit;opacity:.75}
+  table.plan td.pnot{display:block}
+  table.plan td.pnot::before{display:block;margin-bottom:2px}
+}
+@media(max-width:520px){
+  .brand span{display:none}
+  .saved{display:none}
+  main{padding:10px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .util-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+  .pie-wrap svg{flex:0 0 150px;width:150px;height:150px}
+}
 /* Yazdırma görünümü: ekranda gizli; yazıcıda bütün satırlar tek belgede, gün sütunları olmadan. */
 #printArea{display:none}
 @media print{
@@ -283,6 +391,10 @@ td.editing{position:relative;padding:0}
   #printArea .pkpi h2{font:600 11px Calibri,"Segoe UI",sans-serif;margin:0 0 1.5mm}
   #printArea .pkpi table{width:auto;min-width:70mm}
   #printArea .pkpi td{border:0;padding:1px 10px 1px 0;font-size:9px}
+  /* Haftalık plan çizelgesi: renkli hücreler yazıcıda da dolu çıksın. */
+  #printArea .pplan td.pcell{text-align:center;font-weight:700;font-size:8px;text-transform:uppercase;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea .pplan .pbaslik{text-align:center;font-weight:700;font-size:11px;padding:2mm 0 1.5mm}
 }
 </style>
 
@@ -292,18 +404,24 @@ td.editing{position:relative;padding:0}
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-view="orders" aria-selected="true">İş Emirleri</button>
       <button class="tab" role="tab" data-view="daily" aria-selected="false">Günlük Giriş</button>
+      <button class="tab" role="tab" data-view="plan" aria-selected="false">Haftalık Plan</button>
       <button class="tab" role="tab" data-view="summary" aria-selected="false">Özet</button>
       <button class="tab" role="tab" data-view="products" aria-selected="false">Ürün Listesi</button>
       <button class="tab" role="tab" data-view="machines" aria-selected="false">Makineler</button>
     </nav>
     <div class="top-right">
       <span class="saved" id="savedAt"></span>
-      <button class="btn sm" id="btnXlsx" hidden>Excel dosyası indir</button>
-      <button class="btn sm" id="btnCopyExcel">Excel'e kopyala</button>
-      <button class="btn sm" id="btnPrint">Yazdır / PDF</button>
-      <button class="btn sm" id="btnEdit">Düzenlemeyi aç</button>
-      <button class="btn sm" id="btnBackup">Yedek</button>
-      <button class="btn sm danger" id="btnClear">Boşalt</button>
+      <details class="tools" id="toolsMenu">
+        <summary class="btn sm" aria-label="Araçlar">Araçlar</summary>
+        <div class="tools-pop">
+          <button class="btn sm" id="btnXlsx" hidden>Excel dosyası indir</button>
+          <button class="btn sm" id="btnCopyExcel">Excel'e kopyala</button>
+          <button class="btn sm" id="btnPrint">Yazdır / PDF</button>
+          <button class="btn sm" id="btnEdit">Düzenlemeyi aç</button>
+          <button class="btn sm" id="btnBackup">Yedek</button>
+          <button class="btn sm danger" id="btnClear">Boşalt</button>
+        </div>
+      </details>
     </div>
   </div>
 </header>
@@ -391,6 +509,35 @@ td.editing{position:relative;padding:0}
     </table></div></div>
   </section>
 
+  <!-- PLAN -->
+  <section class="view" id="view-plan" hidden>
+    <div class="toolbar">
+      <span class="month-nav">
+        <button class="btn sm" id="plPrev" aria-label="Önceki hafta">‹</button>
+        <input type="date" id="plDate" aria-label="Hafta">
+        <button class="btn sm" id="plNext" aria-label="Sonraki hafta">›</button>
+        <button class="btn sm" id="plNow">Bu hafta</button>
+      </span>
+      <span class="spacer"></span>
+      <span class="count" id="plCount"></span>
+    </div>
+    <div class="panel plan-panel">
+      <div class="plan-bas"><h2 id="plTitle"></h2><span id="plRange"></span></div>
+      <div class="plan-wrap"><table class="plan" id="plTable">
+        <thead><tr id="plHead"></tr></thead>
+        <tbody id="plBody"></tbody>
+      </table></div>
+      <div class="plan-leg">
+        <span><i style="background:hsl(140 46% 84%)"></i>Üretim yapılan iş emri</span>
+        <span><i style="background:#4a90d9"></i>Makine boş durumda</span>
+        <span><i style="background:#d32020"></i>Makine arızalı</span>
+        <span><i style="background:#e0a300"></i>Makine bakımda</span>
+        <span>Alt çizgili hücre: üretim girilmiş gün</span>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:10px">Hücreler iş emirlerinden kendiliğinden dolar: her makinede açık iş emirleri sırayla yerleşir, her biri kalan adedi bugünkü üretim temposuyla kaç günde bitiriyorsa o kadar gün sürer. Geçmiş günler girilen üretimden okunur. Makinenin arıza ya da bakım durumu <b>Makineler</b> sekmesinden seçilir; açıklama sütununa yazarsan kendiliğinden yazılan cümlenin yerine seninki geçer.</p>
+  </section>
+
   <!-- SUMMARY -->
   <section class="view" id="view-summary" hidden>
     <div class="toolbar">
@@ -471,7 +618,7 @@ td.editing{position:relative;padding:0}
       <button class="btn primary" id="btnNewMachine">Yeni makine</button>
     </div>
     <div class="panel"><div class="scroll"><table>
-      <thead><tr><th>Makine Kodu</th><th>Makine Adı</th><th>Tipi</th><th class="r">İş emri</th><th></th></tr></thead>
+      <thead><tr><th>Makine Kodu</th><th>Makine Adı</th><th>Tipi</th><th>Durum</th><th class="r">İş emri</th><th></th></tr></thead>
       <tbody id="mcBody"></tbody>
     </table></div></div>
     <p class="hint" style="margin-top:10px">İş emrindeki Makine sütunu bu listeden seçilir. Adı ya da tipi burada değiştirdiğinde tüm iş emirlerinde birlikte değişir; iş emirleri makine koduna bağlıdır.</p>
@@ -489,7 +636,7 @@ td.editing{position:relative;padding:0}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "47";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "48";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -912,7 +1059,7 @@ function fillMachineSelects(){
 }
 
 /* ---------- views ---------- */
-const views = ["orders","daily","summary","products","machines"];
+const views = ["orders","daily","plan","summary","products","machines"];
 let view = "orders";
 function setView(v){
   view=v;
@@ -1626,7 +1773,6 @@ $("#btnDelRow").addEventListener("click",()=>{
   });
 });
 function focusOrder(ie){
-  setView("orders");
   $("#oSearch").value=""; $("#oMachine").value=""; $("#oStatus").value="";
   renderOrders();
   const i=gridRows.findIndex(o=>o.ie===ie);
@@ -2067,6 +2213,15 @@ function cellInput(obj,key,type,cls,after,saver){
   i.addEventListener("input",()=>{ obj[key] = type==="number" ? (i.value===""?null:Number(i.value)) : i.value; (saver||saveProduct)(obj); if(after)after(); });
   c.appendChild(i); return c;
 }
+/* Makinenin çalışma durumu gibi sabit seçenekli alanlar için açılır liste hücresi. */
+function cellSelect(obj,key,opts,saver){
+  const c=el("td"), sel=el("select");
+  opts.forEach(([v,l])=>sel.appendChild(new Option(l,v)));
+  sel.value=obj[key]||opts[0][0];
+  sel.disabled=!canEdit();
+  sel.addEventListener("change",()=>{ obj[key]=sel.value; (saver||saveProduct)(obj); });
+  c.appendChild(sel); return c;
+}
 $("#prSearch").addEventListener("input",renderProducts);
 /* Verim dosyasındaki çevrim, göz ve gramaj değerlerini mevcut listeye işler; iş emirlerine dokunmaz. */
 $("#btnSyncProducts").addEventListener("click",()=>openPanel("sync",d=>{
@@ -2085,6 +2240,179 @@ $("#btnSyncProducts").addEventListener("click",()=>openPanel("sync",d=>{
   row.appendChild(go); row.appendChild(cl);
   d.appendChild(row);
 }));
+/* ---------- HAFTALIK PLAN ---------- */
+const PLAN_GUN = ["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+const DURUMLAR = [["calisiyor","Çalışıyor"],["arizali","Arızalı"],["bakim","Bakımda"]];
+let planWS = weekStart(todayISO());
+
+/* ISO hafta numarası: 4 Ocak'ı içeren hafta yılın birinci haftasıdır. */
+function haftaNo(iso){
+  const d=parseISO(iso); d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7)+3);
+  const ilk=new Date(Date.UTC(d.getUTCFullYear(),0,4));
+  ilk.setUTCDate(ilk.getUTCDate()-((ilk.getUTCDay()+6)%7)+3);
+  return Math.round((d-ilk)/604800000)+1;
+}
+/* Ürün adından sabit bir renk tonu: aynı ürün her hafta aynı renkte görünsün. */
+function planHue(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))%360; return h; }
+function planAd(o){ return String(o.urun||o.kod||o.ie||"").toLocaleUpperCase("tr"); }
+/* Kalan adet bugünkü tempoyla kaç günde biter. 0: plan girilmediği için kestirilemiyor. */
+function planGunSayisi(o){
+  const c=calc(o), g=c.gercekGun||c.hizGun||c.kalanGun||0;
+  return g>0 ? Math.max(1,Math.ceil(g)) : 0;
+}
+function planRows(ws){
+  const gunler=[]; for(let i=0;i<6;i++) gunler.push(addDays(ws,i));
+  const bugun=todayISO();
+  return machineItems(false).map((mi,idx)=>{
+    const m=machineByKod(mi.kod), durum=(m&&m.durum)||"calisiyor";
+    const emirler=S.orders.filter(o=>o.makine===mi.kod);
+    const cells=gunler.map(()=>({tip:"bos"}));
+    const r={no:idx+1,kod:mi.kod,ad:mi.ad,tip:mi.tip,m:m,durum:durum,gunler:gunler,cells:cells};
+    if(durum!=="calisiyor"){ for(let i=0;i<6;i++) cells[i]={tip:durum}; return r; }
+    /* Bugün ve öncesi girilen üretimden okunur: o gün en çok adet girilen iş emri makineyi tutmuştur. */
+    gunler.forEach((g,i)=>{
+      if(g>bugun) return;
+      let best=null,bv=0;
+      emirler.forEach(o=>{ const v=n0(o.days&&o.days[g]); if(v>bv){ bv=v; best=o; } });
+      if(best) cells[i]={tip:"is",o:best,ger:true,adet:bv};
+    });
+    /* Bugünden sonrası tahmin: açık iş emirleri sırayla girer, her biri kalan gün sayısı kadar sürer.
+       Önce elde üretimi süren iş, sonra hiç başlanmamış olanlar iş emri numarasına göre. */
+    const acik=emirler.filter(o=>!o.kapali && (!n0(o.plan) || calc(o).kalan>0));
+    acik.sort((a,b)=>{
+      const sa=calc(a).son, sb=calc(b).son;
+      if(!!sa!==!!sb) return sa?-1:1;
+      if(sa&&sb&&sa!==sb) return sa<sb?1:-1;
+      return String(a.ie||"").localeCompare(String(b.ie||""),"tr");
+    });
+    const bas=gunler.findIndex(g=>g>=bugun);
+    if(bas<0 || !acik.length) return r;
+    let qi=0, kalanGun=planGunSayisi(acik[0])||6;
+    for(let i=bas;i<6 && qi<acik.length;i++){
+      const onceki=cells[i], o=acik[qi];
+      cells[i]={tip:"is",o:o,ger:!!(onceki&&onceki.ger&&onceki.o===o),adet:(onceki&&onceki.o===o)?onceki.adet:0};
+      if(--kalanGun<=0){ qi++; kalanGun=qi<acik.length?(planGunSayisi(acik[qi])||6):0; }
+    }
+    return r;
+  });
+}
+/* Açıklama kendiliğinden yazılır; makine satırına elle yazılan not onun yerine geçer. */
+function planAciklama(r){
+  if(r.durum==="arizali") return "MAKİNE ARIZALI DURUMDADIR.";
+  if(r.durum==="bakim") return "MAKİNE BAKIMDADIR, ÜRETİM PLANLANMADI.";
+  const seq=[]; let sonIdx=-1;
+  r.cells.forEach((c,i)=>{ if(c.tip==="is"){ sonIdx=i; if(!seq.length||seq[seq.length-1]!==c.o) seq.push(c.o); } });
+  if(!seq.length) return "MAKİNEDE AÇIK İŞ EMRİ YOK.";
+  if(seq.length===1){
+    if(r.cells.every(c=>c.tip==="is")) return "HAFTA BOYU ÜRETİME DEVAM EDİLECEKTİR.";
+    return planAd(seq[0])+" ÜRETİMİ "+PLAN_GUN[sonIdx].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR, SONRASI İÇİN İŞ EMRİ BEKLENİYOR.";
+  }
+  const adlar=seq.map(planAd);
+  return adlar.slice(0,-1).join(", ")+" ÜRETİMİNDEN SONRA "+adlar[adlar.length-1]+" ÜRETİMİNE BAŞLANACAKTIR.";
+}
+function planNot(r){ return (r.m&&r.m.notlar&&r.m.notlar[planWS])||""; }
+function planNotYaz(r,v){
+  if(!r.m) return;
+  if(!r.m.notlar) r.m.notlar={};
+  if(v.trim()) r.m.notlar[planWS]=v; else delete r.m.notlar[planWS];
+  saveMachine(r.m);
+}
+function planHucreMetin(c){
+  if(c.tip==="bos") return "MAKİNE BOŞ DURUMDA";
+  if(c.tip==="arizali") return "MAKİNE ARIZA DURUMUNDA";
+  if(c.tip==="bakim") return "MAKİNE BAKIMDA";
+  return planAd(c.o);
+}
+function renderPlan(){
+  const rows=planRows(planWS);
+  $("#plDate").value=planWS;
+  $("#plTitle").textContent="Haftalık Üretim Planlama Çizelgesi (Hafta "+haftaNo(planWS)+")";
+  $("#plRange").textContent=trDate(planWS)+" – "+trDate(addDays(planWS,5));
+  const calisan=rows.filter(r=>r.cells.some(c=>c.tip==="is")).length;
+  $("#plCount").textContent=fmt(rows.length)+" makine · "+fmt(calisan)+" tanesinde iş var";
+  const t=$("#plTable");
+  let cg=t.querySelector("colgroup");
+  if(!cg){ cg=el("colgroup"); t.insertBefore(cg,t.firstChild); }
+  if(!cg.childNodes.length){
+    ["c-no","c-kod","c-ad","c-gun","c-gun","c-gun","c-gun","c-gun","c-gun","c-not"]
+      .forEach(k=>cg.appendChild(el("col",k)));
+  }
+  const hd=$("#plHead"); hd.innerHTML="";
+  ["Sıra No","Makine Kodu","Makine Adı"].forEach(x=>hd.appendChild(el("th",null,x)));
+  PLAN_GUN.forEach((g,i)=>{
+    const th=el("th",null,g);
+    th.appendChild(el("small",null," "+trDate(addDays(planWS,i)).slice(0,5)));
+    hd.appendChild(th);
+  });
+  hd.appendChild(el("th",null,"Açıklama"));
+  const tb=$("#plBody"); tb.innerHTML="";
+  const frag=document.createDocumentFragment();
+  rows.forEach(r=>{
+    const tr=el("tr");
+    tr.appendChild(td(String(r.no),"pno"));
+    tr.appendChild(td(r.kod,"pkod mono"));
+    const mak=el("td","pmak"); mak.appendChild(document.createTextNode(r.ad||r.kod));
+    if(r.tip) mak.appendChild(el("span","sub",r.tip));
+    tr.appendChild(mak);
+    r.cells.forEach((c,i)=>{
+      const cell=el("td","pcell "+(c.tip==="is"?(c.ger?"ger":""):c.tip));
+      cell.dataset.l=PLAN_GUN[i]+" "+trDate(addDays(planWS,i)).slice(0,5);
+      if(c.tip==="is") cell.style.setProperty("--h",planHue(planAd(c.o)));
+      cell.appendChild(document.createTextNode(planHucreMetin(c)));
+      if(c.tip==="is"&&c.adet) cell.appendChild(el("small",null,fmt(c.adet)+" adet"));
+      tr.appendChild(cell);
+    });
+    const not=el("td","pnot"); not.dataset.l="Açıklama";
+    const i=el("input"); i.value=planNot(r); i.placeholder=planAciklama(r);
+    i.readOnly=!canEdit()||!r.m;
+    i.addEventListener("input",()=>planNotYaz(r,i.value));
+    not.appendChild(i); tr.appendChild(not);
+    frag.appendChild(tr);
+  });
+  tb.appendChild(frag);
+}
+$("#plPrev").addEventListener("click",()=>{ planWS=addDays(planWS,-7); renderPlan(); });
+$("#plNext").addEventListener("click",()=>{ planWS=addDays(planWS,7); renderPlan(); });
+$("#plNow").addEventListener("click",()=>{ planWS=weekStart(todayISO()); renderPlan(); });
+$("#plDate").addEventListener("change",()=>{ const v=$("#plDate").value; if(v){ planWS=weekStart(v); renderPlan(); } });
+/* Çizelgenin panoya ve yazıcıya giden kopyaları: ekrandakiyle aynı hücreler. */
+function planTable(sep){
+  const rows=planRows(planWS);
+  const out=[["Sıra No","Makine Kodu","Makine Adı"].concat(PLAN_GUN).concat(["Açıklama"]).join(sep)];
+  rows.forEach(r=>{
+    out.push([r.no,r.kod,(r.ad||"")+(r.tip?" "+r.tip:"")]
+      .concat(r.cells.map(planHucreMetin))
+      .concat([planNot(r)||planAciklama(r)]).join(sep));
+  });
+  return out.join("\n");
+}
+function buildPrintPlan(){
+  const rows=planRows(planWS), P=$("#printArea"); P.innerHTML="";
+  const box=el("div","pplan");
+  box.appendChild(el("div","pbaslik","HAFTALIK ÜRETİM PLANLAMA ÇİZELGESİ (HAFTA "+haftaNo(planWS)+")"));
+  box.appendChild(el("p","pmeta",trDate(planWS)+" – "+trDate(addDays(planWS,5))));
+  const tbl=el("table"), th=el("thead"), htr=el("tr");
+  ["Sıra No","Makine Kodu","Makine Adı"].concat(PLAN_GUN).concat(["Açıklama"])
+    .forEach(x=>htr.appendChild(el("th",null,x)));
+  th.appendChild(htr); tbl.appendChild(th);
+  const tb=el("tbody");
+  rows.forEach(r=>{
+    const tr=el("tr");
+    tr.appendChild(td(String(r.no))); tr.appendChild(td(r.kod));
+    tr.appendChild(td((r.ad||"")+(r.tip?" "+r.tip:"")));
+    r.cells.forEach(c=>{
+      const cell=el("td","pcell",planHucreMetin(c));
+      cell.style.background = c.tip==="is" ? "hsl("+planHue(planAd(c.o))+" 46% 84%)"
+        : c.tip==="arizali" ? "#d32020" : c.tip==="bakim" ? "#e0a300" : "#4a90d9";
+      if(c.tip==="arizali"||c.tip==="bos") cell.style.color="#fff";
+      tr.appendChild(cell);
+    });
+    tr.appendChild(td(planNot(r)||planAciklama(r)));
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb); box.appendChild(tbl); P.appendChild(box);
+}
+
 /* ---------- MAKİNELER ---------- */
 function renderMachines(){
   const q=$("#mcSearch").value.trim().toLocaleLowerCase("tr");
@@ -2098,6 +2426,7 @@ function renderMachines(){
     tr.appendChild(cellInput(m,"kod","text",null,()=>{ fillMachineSelects(); },saveMachine));
     tr.appendChild(cellInput(m,"ad","text",null,()=>{ fillMachineSelects(); },saveMachine));
     tr.appendChild(cellInput(m,"tip","text",null,()=>{ fillMachineSelects(); },saveMachine));
+    tr.appendChild(cellSelect(m,"durum",DURUMLAR,saveMachine));
     tr.appendChild(td(fmt(use[m.kod]||0),"r mono"));
     const a=el("td","r");
     const del=el("button","btn sm danger","Sil");
@@ -2112,7 +2441,7 @@ function renderMachines(){
 }
 $("#mcSearch").addEventListener("input",renderMachines);
 $("#btnNewMachine").addEventListener("click",()=>{
-  const m={_id:newId(),kod:"",ad:"",tip:""};
+  const m={_id:newId(),kod:"",ad:"",tip:"",durum:"calisiyor"};
   S.machines.push(m); saveMachine(m); $("#mcSearch").value=""; renderMachines();
   const rows=$("#mcBody").querySelectorAll("tr"); const last=rows[rows.length-1];
   if(last){ const f=last.querySelector("input"); if(f){ f.focus(); f.scrollIntoView({block:"nearest"}); } }
@@ -2249,6 +2578,7 @@ $("#btnEdit").addEventListener("click",()=>{
   });
 });
 $("#btnPrint").addEventListener("click",()=>{
+  if(view==="plan"){ renderPlan(); buildPrintPlan(); window.print(); return; }
   if(view==="daily"){
     renderDaily();
     if(!$("#dBody").querySelector("tr")){ toast("Bu günde yazdırılacak kayıt yok"); return; }
@@ -2260,7 +2590,10 @@ $("#btnPrint").addEventListener("click",()=>{
   buildPrint(); window.print();
 });
 window.addEventListener("afterprint",()=>{ $("#printArea").innerHTML=""; });
-$("#btnCopyExcel").addEventListener("click",()=>toClipboard(table("\t"), fmt(S.orders.length)+" iş emri panoya kopyalandı, Excel'e yapıştır"));
+$("#btnCopyExcel").addEventListener("click",()=>{
+  if(view==="plan"){ toClipboard(planTable("\t"), "Haftalık plan panoya kopyalandı, Excel'e yapıştır"); return; }
+  toClipboard(table("\t"), fmt(S.orders.length)+" iş emri panoya kopyalandı, Excel'e yapıştır");
+});
 
 /* Excel dosyası: dört sayfa — iş emirleri, günlük üretim dökümü, ürün ve makine listeleri.
    Yalnızca dosya indirmenin çalıştığı ortamda görünür (claude.ai kopyasında indirme engelli). */
@@ -2452,6 +2785,7 @@ $("#btnClear2").addEventListener("click",clearPanel);
 function render(){
   if(view==="orders") renderOrders();
   else if(view==="daily") renderDaily();
+  else if(view==="plan") renderPlan();
   else if(view==="summary") renderSummary();
   else if(view==="machines") renderMachines();
   else renderProducts();
@@ -2461,7 +2795,7 @@ fillMachineSelects();
 $("#dDate").value = SEED.bitis;
 $("#dDate").min = "2020-01-01";
 const _fr=fullRange(); $("#sFrom").value=_fr.from; $("#sTo").value=_fr.to;
-$("#buildTag").textContent="· sürüm "+BUILD+" · 3 Eylül 2026";
+$("#buildTag").textContent="· sürüm "+BUILD+" · 6 Eylül 2026";
 /* Excel kitaplığı yalnızca dosya indirmenin çalıştığı ortamda ve yalnızca bir kez yüklenir. */
 if(!window.claude){
   const _sc=document.createElement("script");
@@ -2469,6 +2803,16 @@ if(!window.claude){
   _sc.onload=function(){ $("#btnXlsx").hidden=false; };
   document.head.appendChild(_sc);
 }
+/* Araç şeridi geniş ekranda hep açık durur; dar ekranda dokunmayla açılan listeye döner. */
+const _darMq = window.matchMedia("(max-width:860px)");
+function toolsMode(){ $("#toolsMenu").open = !_darMq.matches; }
+if(_darMq.addEventListener) _darMq.addEventListener("change",toolsMode); else _darMq.addListener(toolsMode);
+toolsMode();
+$("#toolsMenu").querySelectorAll(".btn").forEach(b=>b.addEventListener("click",()=>{ if(_darMq.matches) $("#toolsMenu").open=false; }));
+document.addEventListener("click",e=>{
+  const t=$("#toolsMenu");
+  if(_darMq.matches && t.open && !t.contains(e.target)) t.open=false;
+});
 setView("orders");
 boot();
 /* Sayfa gece boyunca açık kalırsa tarih kendiliğinden devreder. */
