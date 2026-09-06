@@ -371,6 +371,28 @@ td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
   .util-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
   .pie-wrap svg{flex:0 0 150px;width:150px;height:150px}
 }
+
+/* ---------- makine kapasite raporu ---------- */
+table.kap{border-collapse:collapse;width:auto;min-width:100%;font-size:11.5px}
+table.kap th{position:static;background:var(--surface-2);border:1px solid var(--line);text-align:center;
+  font-size:10px;letter-spacing:.04em;padding:6px 5px;white-space:nowrap}
+table.kap td{border:1px solid var(--line-soft);padding:3px 7px;text-align:center;white-space:nowrap;
+  font-variant-numeric:tabular-nums;min-width:44px}
+table.kap tbody tr:hover td{background:inherit}
+td.kap-mak{font-weight:700;font-size:12px;text-transform:uppercase;min-width:118px;line-height:1.2;
+  background:hsl(var(--h,210) 46% 84%);color:#1a1a1a;border:1px solid rgba(0,0,0,.12);white-space:normal}
+td.kap-hepsi{background:#d32020;color:#fff}
+td.kap-et{text-align:left;font-size:10.5px;font-weight:600;color:var(--ink-2);background:var(--surface-2)}
+tr.kap-cal td:not(.kap-et):not(.kap-mak){background:var(--ok-soft)}
+tr.kap-dur td:not(.kap-et):not(.kap-mak){background:var(--warn-soft)}
+tr.kap-pct td:not(.kap-et):not(.kap-mak){color:var(--crit);font-weight:600}
+tr.kap-pct td{border-bottom:2px solid var(--line)}
+td.kap-ay-son,th.kap-ay-son{border-right:2px solid var(--line)}
+td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) td.kap-mak{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0}
+  :root:not([data-theme="light"]) td.kap-hepsi{background:#8f2020;color:#ffecec}}
+:root[data-theme="dark"] td.kap-mak{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0}
+:root[data-theme="dark"] td.kap-hepsi{background:#8f2020;color:#ffecec}
 /* Yazdırma görünümü: ekranda gizli; yazıcıda bütün satırlar tek belgede, gün sütunları olmadan. */
 #printArea{display:none}
 @media print{
@@ -393,6 +415,8 @@ td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
   #printArea .pkpi td{border:0;padding:1px 10px 1px 0;font-size:9px}
   /* Haftalık plan çizelgesi: renkli hücreler yazıcıda da dolu çıksın. */
   #printArea .pplan td.pcell{text-align:center;font-weight:700;font-size:8px;text-transform:uppercase;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea table.kap td,#printArea table.kap th{font-size:7px;padding:1px 2px;
     -webkit-print-color-adjust:exact;print-color-adjust:exact}
   #printArea .pplan .pbaslik{text-align:center;font-weight:700;font-size:11px;padding:2mm 0 1.5mm}
 }
@@ -615,6 +639,7 @@ td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
   <section class="view" id="view-rapor" hidden>
     <div class="toolbar">
       <label class="field"><span>Dönem</span><select id="rpYil"></select></label>
+      <label class="field"><span>Haftalık kırılım</span><select id="rpAy"></select></label>
       <span class="spacer"></span>
       <span class="count" id="rpCount"></span>
     </div>
@@ -671,7 +696,7 @@ td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "53";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "54";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2489,6 +2514,126 @@ function buildPrintPlan(){
   tbl.appendChild(tb); box.appendChild(tbl); P.appendChild(box);
 }
 
+/* ---------- MAKİNE KAPASİTE RAPORU ---------- */
+/* Bir makinenin bir aydaki toplam kapasitesi, o ay çalıştığı ve durduğu saatlerin
+   toplamıdır; çalışma yüzdesi de bu toplamın içindeki çalışma payıdır. */
+function kapasiteVeri(yil){
+  const bas=yil+"-01-01", bit=yil+"-12-31", mak={};
+  function kutu(kod){
+    if(!mak[kod]) mak[kod]={ay:[],gun:{}};
+    if(!mak[kod].ay.length) for(let i=0;i<12;i++) mak[kod].ay.push({cal:0,dur:0});
+    return mak[kod];
+  }
+  function ekle(k,g,alan,deger){
+    if(!deger||g<bas||g>bit) return;
+    k.ay[+g.slice(5,7)-1][alan]+=deger;
+    if(!k.gun[g]) k.gun[g]={cal:0,dur:0};
+    k.gun[g][alan]+=deger;
+  }
+  S.orders.forEach(o=>{
+    const c=calc(o), k=kutu(o.makine||"");
+    const gunler=[];
+    for(const g in o.days){
+      const v=n0(o.days[g]); if(!v||g<bas||g>bit) continue;
+      gunler.push(g);
+      ekle(k,g,"cal", c.Q ? v/c.Q : 0);
+    }
+    let girilen=0;
+    for(const g in (o.dur||{})){ const d=n0(o.dur[g]); if(!d) continue; girilen+=d; ekle(k,g,"dur",d); }
+    /* Günlük duruş girilmemiş, yalnızca iş emri toplamı varsa: üretim günlerine eşit yayılır. */
+    if(!girilen && n0(o.durus) && gunler.length){
+      const pay=n0(o.durus)/gunler.length;
+      gunler.forEach(g=>ekle(k,g,"dur",pay));
+    }
+  });
+  S.bakim.forEach(x=>{ if(x.tarih) ekle(kutu(x.makine||""),x.tarih,"dur",n0(x.sure)); });
+  return mak;
+}
+/* Ayın günleri pazartesi başlangıçlı haftalara bölünür: 1. HF, 2. HF ... */
+function ayHaftalari(yil,ay){
+  const ilk=yil+"-"+String(ay+1).padStart(2,"0")+"-01";
+  const gunSayisi=new Date(Date.UTC(+yil,ay+1,0)).getUTCDate();
+  const kaydir=(parseISO(ilk).getUTCDay()+6)%7;
+  const haftalar=[];
+  for(let g=1;g<=gunSayisi;g++){
+    const h=Math.floor((g-1+kaydir)/7);
+    if(!haftalar[h]) haftalar[h]=[];
+    haftalar[h].push(yil+"-"+String(ay+1).padStart(2,"0")+"-"+String(g).padStart(2,"0"));
+  }
+  return haftalar;
+}
+function kapSatir(etiket,cls){ const tr=el("tr",cls); tr.appendChild(el("td","kap-et",etiket)); return tr; }
+function kapHucre(tr,metin,cls){ tr.appendChild(el("td",cls||null,metin)); }
+/* Dört satırlık makine bloğu: kapasite, çalışma, duruş, yüzde. */
+function kapBlok(tb,ad,hue,aylar,haftalar,vurgu){
+  const satirlar=[kapSatir("Toplam Kapasite","kap-top"),kapSatir("Çalışma Süresi","kap-cal"),
+    kapSatir("Duruş Süresi","kap-dur"),kapSatir("Çalışma Yüzdesi","kap-pct")];
+  const mk=el("td","kap-mak"+(vurgu?" kap-hepsi":"")); mk.rowSpan=4; mk.textContent=ad;
+  if(!vurgu) mk.style.setProperty("--h",hue);
+  satirlar[0].insertBefore(mk,satirlar[0].firstChild);
+  const yaz=(kutu,dolu)=>{
+    const top=kutu.cal+kutu.dur;
+    kapHucre(satirlar[0], dolu&&top?fmt(top):"");
+    kapHucre(satirlar[1], dolu&&kutu.cal?fmt(kutu.cal):"");
+    kapHucre(satirlar[2], dolu&&kutu.dur?fmt(kutu.dur):"");
+    kapHucre(satirlar[3], dolu&&top?nf1.format(kutu.cal/top*100)+"%":"");
+  };
+  let yilCal=0, yilDur=0, doluAy=0;
+  aylar.forEach(a=>{
+    const dolu=(a.cal+a.dur)>0;
+    if(dolu){ yilCal+=a.cal; yilDur+=a.dur; doluAy++; }
+    yaz(a,dolu);
+  });
+  /* Yıllık ortalama: veri girilmiş ayların ortalaması. */
+  const ort={cal:doluAy?yilCal/doluAy:0,dur:doluAy?yilDur/doluAy:0};
+  satirlar.forEach(tr=>tr.lastChild.classList.add("kap-ay-son"));
+  yaz(ort,doluAy>0);
+  satirlar.forEach(tr=>tr.lastChild.classList.add("kap-yil"));
+  haftalar.forEach(h=>yaz(h,(h.cal+h.dur)>0));
+  satirlar.forEach(tr=>tb.appendChild(tr));
+}
+function kapasiteBolum(yil,ay){
+  const mak=kapasiteVeri(yil);
+  const panel=el("div","panel"); panel.style.marginBottom="16px";
+  const head=el("div","panel-head");
+  head.appendChild(el("h2",null,"Makine kapasite raporu"));
+  head.appendChild(el("p",null,"Aylık çalışma ve duruş saatleri; sağdaki sütunlar "+MONTHS[ay]+" ayının haftaları"));
+  panel.appendChild(head);
+  const sc=el("div","scroll"), t=el("table","kap"), th=el("thead");
+  const haftalar=ayHaftalari(yil,ay);
+  const ust=el("tr");
+  ust.appendChild(el("th",null,"Makine")); ust.appendChild(el("th",null,"Dönem"));
+  for(let i=0;i<12;i++) ust.appendChild(el("th","kap-c"+(i===11?" kap-ay-son":""),MONTHS[i].toLocaleUpperCase("tr")));
+  const yo=el("th","kap-c kap-yil","Yıllık Ortalama"); ust.appendChild(yo);
+  haftalar.forEach((h,i)=>ust.appendChild(el("th","kap-c kap-hf",(i+1)+". HF")));
+  th.appendChild(ust); t.appendChild(th);
+  const tb=el("tbody");
+  const kodlar=machineItems(false).map(m=>m.kod).filter(k=>mak[k]);
+  Object.keys(mak).forEach(k=>{ if(kodlar.indexOf(k)<0) kodlar.push(k); });
+  const toplam={ay:[],hafta:[]};
+  for(let i=0;i<12;i++) toplam.ay.push({cal:0,dur:0});
+  haftalar.forEach(()=>toplam.hafta.push({cal:0,dur:0}));
+  kodlar.forEach(k=>{
+    const m=mak[k];
+    const hf=haftalar.map(gunler=>{
+      const kutu={cal:0,dur:0};
+      gunler.forEach(g=>{ const d=m.gun[g]; if(d){ kutu.cal+=d.cal; kutu.dur+=d.dur; } });
+      return kutu;
+    });
+    m.ay.forEach((a,i)=>{ toplam.ay[i].cal+=a.cal; toplam.ay[i].dur+=a.dur; });
+    hf.forEach((h,i)=>{ toplam.hafta[i].cal+=h.cal; toplam.hafta[i].dur+=h.dur; });
+    kapBlok(tb, k?machineLabel(k):"— makine yok —", planHue(k||"yok"), m.ay, hf, false);
+  });
+  if(!kodlar.length){
+    const tr=el("tr"), c=el("td","empty"); c.colSpan=15+haftalar.length;
+    c.textContent="Bu dönemde makine kaydı yok"; tr.appendChild(c); tb.appendChild(tr);
+  } else {
+    kapBlok(tb,"TÜM MAKİNELER",0,toplam.ay,toplam.hafta,true);
+  }
+  t.appendChild(tb); sc.appendChild(t); panel.appendChild(sc);
+  return panel;
+}
+
 /* ---------- FAALİYET RAPORU ---------- */
 /* Dönem: takvim yılı. İş emri, o yıl içinde üretim girilmişse rapora girer; adetler
    yalnızca o yılın günlerinden toplanır, plan ve duruş iş emrinin tamamına aittir. */
@@ -2575,11 +2720,11 @@ function raporSatirlar(v){
       fmt1(e.planSaat),fmt1(e.saat),fmt1(e.c.N),e.c.calisVerim?pctS(e.c.calisVerim):"—",
       fmt(e.o.kgoz),fmt(e.o.cgoz),fmt2(e.o.cevrim),fmt2(e.o.gcevrim),fmt2(e.c.maliyetCevrim),
       fmt1(e.durus),fmt1(e.c.P),fmt1(e.c.Q),fmt(e.c.R),fmt(e.c.S)])});
-  /* Kapasite: aylık üretim ve çalışma. */
-  R.push({b:"Kapasite", a:"Aylık üretim, çalışma saati ve duruş",
-    h:["Ay","Üretim","Çalışma Saati","Duruş (saat)","Günlük Ortalama"],
-    z:[0,1,1,1,1],
-    s:v.aylar.map((a,i)=>[a.ad,fmt(a.uretim),fmt1(a.saat),fmt1(a.durus),
+  /* Kapasite: aylık üretim. Çalışma ve duruş saatleri makine kapasite çizelgesinde. */
+  R.push({b:"Aylık üretim", a:"Dönem içinde ay ay üretilen adet",
+    h:["Ay","Üretim","Günlük Ortalama"],
+    z:[0,1,1],
+    s:v.aylar.map((a,i)=>[a.ad,fmt(a.uretim),
       fmt(a.uretim/new Date(Date.UTC(+v.yil,i+1,0)).getUTCDate())])});
   /* Makine: çalışma, duruş ve duruş yüzdesi. */
   const mk=Object.keys(v.makine).sort((a,b)=>v.makine[b].adet-v.makine[a].adet);
@@ -2629,16 +2774,28 @@ function renderRapor(){
   k.appendChild(kpi("Duruş saati",fmt1(v.durus+v.bakimSure),topSaat?pctS((v.durus+v.bakimSure)/topSaat)+" duruş payı":"—"));
   k.appendChild(kpi("Bakım maliyeti",fmt(v.bakimMaliyet)+" ₺",fmt(v.bakim.length)+" arıza ve bakım kaydı"));
   k.appendChild(kpi("Hammadde firesi",fmt1(v.fire)+" kg",fmt(v.hatali)+" hatalı adet"));
+  const aySel=$("#rpAy"), eskiAy=aySel.value;
+  if(aySel.options.length!==12){
+    aySel.innerHTML="";
+    MONTHS.forEach((m,i)=>aySel.appendChild(new Option(m,String(i))));
+    aySel.value = sel.value===todayISO().slice(0,4) ? String(new Date().getMonth()) : "0";
+  } else if(eskiAy) aySel.value=eskiAy;
   const b=$("#rpBolumler"); b.innerHTML="";
+  b.appendChild(kapasiteBolum(sel.value,+aySel.value));
   raporSatirlar(v).forEach(x=>b.appendChild(raporBolum(x.b,x.a,x.h,x.s,x.z)));
 }
 $("#rpYil").addEventListener("change",renderRapor);
+$("#rpAy").addEventListener("change",renderRapor);
 /* Raporun çıktısı: ekrandaki bölümlerin aynısı, tek belgede. */
 function buildPrintRapor(){
   const v=raporVeri($("#rpYil").value), area=$("#printArea"); area.innerHTML="";
   area.appendChild(el("h1",null,v.yil+" Faaliyet Raporu"));
   area.appendChild(el("p","pmeta","1 Ocak – 31 Aralık "+v.yil+" · "+fmt(v.emirler.length)+" iş emri · "+
     fmt(v.uretim)+" adet üretim · "+fmt1(v.saat)+" saat çalışma · "+fmt1(v.durus+v.bakimSure)+" saat duruş"));
+  const kapBox=el("div","pkpi");
+  kapBox.appendChild(el("h2",null,"Makine kapasite raporu"));
+  kapBox.appendChild(kapasiteBolum(v.yil,+$("#rpAy").value).querySelector("table"));
+  area.appendChild(kapBox);
   raporSatirlar(v).forEach(x=>{
     const box=el("div","pkpi");
     box.appendChild(el("h2",null,x.b));
@@ -2933,17 +3090,42 @@ function sheetBakim(){
 /* Kapasite ve planlama sayfaları rapor sekmesindeki dönemi ve haftayı izler. */
 function raporYil(){ const v=$("#rpYil").value; return v||todayISO().slice(0,4); }
 function sheetKapasite(){
-  const v=raporVeri(raporYil());
-  const rows=[["Dönem "+v.yil],["Ay","Üretim","Çalışma Saati","Duruş (saat)"]];
-  v.aylar.forEach(a=>rows.push([a.ad,a.uretim,r2(a.saat),r2(a.durus)]));
-  rows.push(["Toplam",v.uretim+v.hatali,r2(v.saat),r2(v.durus+v.bakimSure)]);
-  rows.push([]);
-  rows.push(["Makine","İş Emri","Üretim","Çalışma Saati","Duruş (saat)","Bakım Süresi","Duruş Yüzdesi %","Bakım Maliyeti"]);
-  Object.keys(v.makine).sort((a,b)=>v.makine[b].adet-v.makine[a].adet).forEach(k=>{
-    const m=v.makine[k], top=m.saat+m.durus+m.bakimSure;
-    rows.push([machineLabel(k),m.ie,m.adet,r2(m.saat),r2(m.durus),r2(m.bakimSure),
-      top?r2((m.durus+m.bakimSure)/top*100):"",r2(m.maliyet)]);
+  const yil=raporYil(), mak=kapasiteVeri(yil);
+  const ay=$("#rpAy").value?+$("#rpAy").value:0, haftalar=ayHaftalari(yil,ay);
+  const rows=[["MAKİNE KAPASİTE RAPORU · "+yil]];
+  const bas=["Makine","Dönem"].concat(MONTHS.map(m=>m.toLocaleUpperCase("tr")))
+    .concat(["Yıllık Ortalama"]).concat(haftalar.map((h,i)=>MONTHS[ay]+" "+(i+1)+". HF"));
+  rows.push(bas);
+  const kodlar=machineItems(false).map(m=>m.kod).filter(k=>mak[k]);
+  Object.keys(mak).forEach(k=>{ if(kodlar.indexOf(k)<0) kodlar.push(k); });
+  const toplamAy=[], toplamHf=[];
+  for(let i=0;i<12;i++) toplamAy.push({cal:0,dur:0});
+  haftalar.forEach(()=>toplamHf.push({cal:0,dur:0}));
+  function blok(ad,aylar,hf){
+    const sat=[[ad,"Toplam Kapasite"],["","Çalışma Süresi"],["","Duruş Süresi"],["","Çalışma Yüzdesi %"]];
+    let cal=0,dur=0,dolu=0;
+    const yaz=k=>{
+      const top=k.cal+k.dur;
+      sat[0].push(top?r2(top):""); sat[1].push(k.cal?r2(k.cal):"");
+      sat[2].push(k.dur?r2(k.dur):""); sat[3].push(top?r2(k.cal/top*100):"");
+    };
+    aylar.forEach(a=>{ if(a.cal+a.dur){ cal+=a.cal; dur+=a.dur; dolu++; } yaz(a); });
+    yaz({cal:dolu?cal/dolu:0,dur:dolu?dur/dolu:0});
+    hf.forEach(yaz);
+    sat.forEach(r=>rows.push(r));
+  }
+  kodlar.forEach(k=>{
+    const m=mak[k];
+    const hf=haftalar.map(gunler=>{
+      const kutu={cal:0,dur:0};
+      gunler.forEach(g=>{ const d=m.gun[g]; if(d){ kutu.cal+=d.cal; kutu.dur+=d.dur; } });
+      return kutu;
+    });
+    m.ay.forEach((a,i)=>{ toplamAy[i].cal+=a.cal; toplamAy[i].dur+=a.dur; });
+    hf.forEach((h,i)=>{ toplamHf[i].cal+=h.cal; toplamHf[i].dur+=h.dur; });
+    blok(k?machineLabel(k):"— makine yok —",m.ay,hf);
   });
+  if(kodlar.length) blok("TÜM MAKİNELER",toplamAy,toplamHf);
   return rows;
 }
 function sheetPlanlama(){
