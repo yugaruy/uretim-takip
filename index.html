@@ -406,8 +406,8 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 :root[data-theme="dark"] td.kap-hepsi{background:#8f2020;color:#ffecec}
 /* Çıktı görünümü: ekranda gizli; yazıcıda ve PDF üretiminde bütün satırlar tek belgede,
    gün sütunları olmadan. Biçim kuralları ortak; sadece görünürlük ikisinde ayrı kuruluyor. */
-#printArea{display:none}
-#printArea h1{font:600 13px/1.3 system-ui,sans-serif;margin:0 0 1.5mm}
+#printArea{display:none;background:#fff;color:#000}
+#printArea h1{color:#000;font:600 13px/1.3 system-ui,sans-serif;margin:0 0 1.5mm}
 #printArea .pmeta{font:10px system-ui,sans-serif;color:#444;margin:0 0 2.5mm}
 /* Tablo sayfanın tam enini kaplar: metin sütunları sararak yer açar, sayılar bölünmez. */
 #printArea table{border-collapse:collapse;width:100%;table-layout:fixed;font:8.5px system-ui,sans-serif;color:#000}
@@ -3202,6 +3202,9 @@ async function pdfCikti(){
     if(!window.jspdf) await betikYukle(PDF_BETIK[1]);
   }catch(e){ toast("PDF için internet bağlantısı gerekiyor"); return; }
   const alan=$("#printArea");
+  /* Çıktı her zaman açık temada çizilir: koyu tema kâğıda siyah zemin basardı. */
+  const oncekiTema=document.documentElement.getAttribute("data-theme");
+  document.documentElement.setAttribute("data-theme","light");
   document.body.classList.add("pdfyap");
   try{
     const EN=1062, KENAR=8, sayfaEn=297-2*KENAR, sayfaBoy=210-2*KENAR;
@@ -3224,7 +3227,9 @@ async function pdfCikti(){
       const h=Math.round((kes-y)*olcek);
       const par=document.createElement("canvas");
       par.width=kanvas.width; par.height=h;
-      par.getContext("2d").drawImage(kanvas,0,Math.round(y*olcek),kanvas.width,h,0,0,kanvas.width,h);
+      const ciz=par.getContext("2d");
+      ciz.fillStyle="#ffffff"; ciz.fillRect(0,0,par.width,par.height);   /* JPEG saydamı siyaha çevirir */
+      ciz.drawImage(kanvas,0,Math.round(y*olcek),kanvas.width,h,0,0,kanvas.width,h);
       if(!ilk) doc.addPage();
       doc.addImage(par.toDataURL("image/jpeg",0.92),"JPEG",KENAR,KENAR,sayfaEn,(h/olcek)*mm);
       ilk=false; y=kes;
@@ -3237,7 +3242,11 @@ async function pdfCikti(){
     }
     doc.save(adi);
   }catch(e){ toast("PDF oluşturulamadı"); }
-  finally{ document.body.classList.remove("pdfyap"); alan.innerHTML=""; }
+  finally{
+    document.body.classList.remove("pdfyap"); alan.innerHTML="";
+    if(oncekiTema) document.documentElement.setAttribute("data-theme",oncekiTema);
+    else document.documentElement.removeAttribute("data-theme");
+  }
 }
 $("#btnPrint").addEventListener("click",()=>{
   if(pwaModu()){ pdfCikti(); return; }
