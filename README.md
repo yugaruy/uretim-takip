@@ -1,4 +1,4 @@
-# Üretim Takip
+# Novotech Üretim
 
 Tek dosyalık üretim takip aracı. Tarayıcıda çalışır, kurulum ve hesap gerektirmez.
 Girilen veriler yalnızca kullanan kişinin tarayıcısında saklanır; hiçbir yere gönderilmez.
