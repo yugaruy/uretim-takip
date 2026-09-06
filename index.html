@@ -710,7 +710,7 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "58";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "59";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2351,50 +2351,91 @@ function haftaNo(iso){
 /* Ürün adından sabit bir renk tonu: aynı ürün her hafta aynı renkte görünsün. */
 function planHue(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))%360; return h; }
 function planAd(o){ return String(o.urun||o.kod||o.ie||"").toLocaleUpperCase("tr"); }
-/* Kalan adet bugünkü tempoyla kaç günde biter. 0: plan girilmediği için kestirilemiyor. */
-function planGunSayisi(o){
-  const c=calc(o), g=c.gercekGun||c.hizGun||c.kalanGun||0;
-  return g>0 ? Math.max(1,Math.ceil(g)) : 0;
+/* İş emrinin günlük temposu: üretim girildiyse ilk ve son giriş arasındaki gerçek hız,
+   girilmediyse çevrim süresi ve göz sayısından çıkan teorik günlük kapasite. */
+function planGunlukHiz(o){
+  const c=calc(o);
+  let ilk=null, son=null, T=0;
+  for(const k in (o.days||{})){ const v=n0(o.days[k]); if(v){ T+=v; if(!ilk||k<ilk) ilk=k; if(!son||k>son) son=k; } }
+  const gecen=(ilk&&son)?isGunSayisi(ilk,son):0;
+  if(gecen&&T) return T/gecen;
+  return c.S || c.R || 0;
+}
+function planToplamGun(o){
+  const hiz=planGunlukHiz(o), plan=n0(o.plan);
+  return (hiz&&plan) ? Math.max(1,Math.ceil(plan/hiz)) : 0;
+}
+function planKalanGun(o){
+  const hiz=planGunlukHiz(o), kalan=calc(o).kalan;
+  return (hiz&&kalan) ? Math.max(1,Math.ceil(kalan/hiz)) : 0;
+}
+function planIlkSon(o){
+  let ilk=null, son=null;
+  for(const k in (o.days||{})){ if(n0(o.days[k])){ if(!ilk||k<ilk) ilk=k; if(!son||k>son) son=k; } }
+  return {ilk:ilk,son:son};
+}
+/* Bir iş emrinin makineyi tuttuğu gün aralığı. Üretim girilmiş olması şart değil:
+   iş emri makineye atandığı andan planlanan adet bitene kadar makineyi tutar. */
+function planAralik(o,kuyrukBas){
+  const bugun=todayISO(), gs=planIlkSon(o), bitti=o.kapali || (n0(o.plan)>0 && calc(o).kalan<=0);
+  const bas = gs.ilk || kuyrukBas;
+  let bit;
+  if(bitti) bit = gs.son || bas;
+  else if(gs.ilk){
+    const suren = gs.son>bugun ? gs.son : bugun;
+    const kalan = planKalanGun(o);
+    bit = addWorkDays(suren, kalan?kalan-1:5);
+  } else {
+    const top = planToplamGun(o);
+    bit = addWorkDays(bas, top?top-1:5);
+  }
+  if(bit<bas) bit=bas;
+  return {o:o, bas:bas, bit:bit, tahmin:!planToplamGun(o)};
+}
+/* Makinedeki işler sıraya dizilir: başlamış olanlar kendi tarihinde, başlamamışlar
+   bir öncekinin bitişinden sonra. */
+function planYerlesim(kod){
+  const basli=[], yeni=[];
+  S.orders.forEach(o=>{
+    if(o.makine!==kod) return;
+    const gs=planIlkSon(o);
+    if(gs.ilk) basli.push({o:o,ilk:gs.ilk});
+    else if(!o.kapali) yeni.push({o:o});
+  });
+  basli.sort((a,b)=>a.ilk.localeCompare(b.ilk));
+  yeni.sort((a,b)=>String(a.o.ie||"").localeCompare(String(b.o.ie||""),"tr"));
+  const out=[];
+  let imlec=todayISO();
+  basli.forEach(x=>{
+    const a=planAralik(x.o,x.ilk);
+    out.push(a);
+    if(a.bit>=imlec) imlec=addWorkDays(a.bit,1);
+  });
+  yeni.forEach(x=>{
+    const a=planAralik(x.o,imlec);
+    out.push(a);
+    imlec=addWorkDays(a.bit,1);
+  });
+  return out;
 }
 function planRows(ws){
   const gunler=[]; for(let i=0;i<6;i++) gunler.push(addDays(ws,i));
-  const bugun=todayISO();
   return machineItems(false).map((mi,idx)=>{
     const m=machineByKod(mi.kod), durum=(m&&m.durum)||"calisiyor";
-    const emirler=S.orders.filter(o=>o.makine===mi.kod);
     const cells=gunler.map(()=>({tip:"bos"}));
     const r={no:idx+1,kod:mi.kod,ad:mi.ad,tip:mi.tip,m:m,durum:durum,gunler:gunler,cells:cells};
     if(durum!=="calisiyor"){ for(let i=0;i<6;i++) cells[i]={tip:durum}; return r; }
-    /* Bugün ve öncesi girilen üretimden okunur: o gün en çok adet girilen iş emri makineyi tutmuştur. */
+    const yer=planYerlesim(mi.kod);
     gunler.forEach((g,i)=>{
-      if(g>bugun) return;
-      let best=null,bv=0;
-      emirler.forEach(o=>{ const v=n0(o.days&&o.days[g]); if(v>bv){ bv=v; best=o; } });
-      if(best) cells[i]={tip:"is",o:best,ger:true,adet:bv};
+      const uygun=yer.filter(a=>g>=a.bas && g<=a.bit);
+      if(!uygun.length) return;
+      /* Aynı güne iki iş düşerse o gün üretim girileni öne alınır. */
+      let sec=uygun[0];
+      uygun.forEach(a=>{ if(n0(a.o.days&&a.o.days[g])) sec=a; });
+      const adet=n0(sec.o.days&&sec.o.days[g]);
+      cells[i]={tip:"is",o:sec.o,ger:adet>0,adet:adet,
+        gun:isGunSayisi(sec.bas,g), top:sec.tahmin?0:isGunSayisi(sec.bas,sec.bit)};
     });
-    /* Bugünden sonrası tahmin: açık iş emirleri sırayla girer, her biri kalan gün sayısı kadar sürer.
-       Önce elde üretimi süren iş, sonra hiç başlanmamış olanlar iş emri numarasına göre. */
-    const acik=emirler.filter(o=>!o.kapali && (!n0(o.plan) || calc(o).kalan>0));
-    acik.sort((a,b)=>{
-      const sa=calc(a).son, sb=calc(b).son;
-      if(!!sa!==!!sb) return sa?-1:1;
-      if(sa&&sb&&sa!==sb) return sa<sb?1:-1;
-      return String(a.ie||"").localeCompare(String(b.ie||""),"tr");
-    });
-    const bas=gunler.findIndex(g=>g>=bugun);
-    if(bas<0 || !acik.length) return r;
-    let qi=0, top=planGunSayisi(acik[0]), kalanGun=top||6, gun=0;
-    for(let i=bas;i<6 && qi<acik.length;i++){
-      const onceki=cells[i], o=acik[qi];
-      gun++;
-      cells[i]={tip:"is",o:o,ger:!!(onceki&&onceki.ger&&onceki.o===o),
-        adet:(onceki&&onceki.o===o)?onceki.adet:0,gun:gun,top:top};
-      if(--kalanGun<=0){
-        qi++; gun=0;
-        top=qi<acik.length?planGunSayisi(acik[qi]):0;
-        kalanGun=qi<acik.length?(top||6):0;
-      }
-    }
     return r;
   });
 }
@@ -2405,17 +2446,15 @@ function planAciklama(r){
   const seq=[];
   r.cells.forEach(c=>{ if(c.tip==="is" && (!seq.length||seq[seq.length-1]!==c.o)) seq.push(c.o); });
   if(!seq.length) return "MAKİNEDE AÇIK İŞ EMRİ YOK.";
-  /* Tahmini süre işin bugünden sonraki hücrelerinde durur; geçmiş günlerde yoktur. */
-  const sure=o=>{ let t=0; r.cells.forEach(c=>{ if(c.tip==="is"&&c.o===o&&c.top) t=c.top; }); return t; };
   const sonGun=o=>{ let i=-1; r.cells.forEach((c,k)=>{ if(c.tip==="is"&&c.o===o) i=k; }); return i; };
-  const ilk=seq[0], t=sure(ilk);
+  const ilk=seq[0], t=planKalanGun(ilk);
   let s = planAd(ilk)+" ÜRETİMİ "+(t ? t+" GÜN DAHA SÜRER" : "SÜRÜYOR");
   if(seq.length===1){
     if(r.cells.every(c=>c.tip==="is")) s+=", HAFTA BOYU DEVAM EDİLECEKTİR.";
     else s+=", "+PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR; SONRASI İÇİN İŞ EMRİ BEKLENİYOR.";
   } else {
     s+=", "+PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR; ";
-    s+=seq.slice(1).map(o=>{ const ts=sure(o); return "ARDINDAN "+planAd(o)+" ÜRETİMİNE BAŞLANACAKTIR"+(ts?" ("+ts+" GÜN)":""); }).join("; ")+".";
+    s+=seq.slice(1).map(o=>{ const ts=planToplamGun(o); return "ARDINDAN "+planAd(o)+" ÜRETİMİNE BAŞLANACAKTIR"+(ts?" ("+ts+" GÜN)":""); }).join("; ")+".";
   }
   if(!t) s+=" PLANLANAN ÜRETİM GİRİLMEDİĞİ İÇİN SÜRE HESAPLANAMADI.";
   return s;
