@@ -636,7 +636,7 @@ td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "48";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "49";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2287,11 +2287,17 @@ function planRows(ws){
     });
     const bas=gunler.findIndex(g=>g>=bugun);
     if(bas<0 || !acik.length) return r;
-    let qi=0, kalanGun=planGunSayisi(acik[0])||6;
+    let qi=0, top=planGunSayisi(acik[0]), kalanGun=top||6, gun=0;
     for(let i=bas;i<6 && qi<acik.length;i++){
       const onceki=cells[i], o=acik[qi];
-      cells[i]={tip:"is",o:o,ger:!!(onceki&&onceki.ger&&onceki.o===o),adet:(onceki&&onceki.o===o)?onceki.adet:0};
-      if(--kalanGun<=0){ qi++; kalanGun=qi<acik.length?(planGunSayisi(acik[qi])||6):0; }
+      gun++;
+      cells[i]={tip:"is",o:o,ger:!!(onceki&&onceki.ger&&onceki.o===o),
+        adet:(onceki&&onceki.o===o)?onceki.adet:0,gun:gun,top:top};
+      if(--kalanGun<=0){
+        qi++; gun=0;
+        top=qi<acik.length?planGunSayisi(acik[qi]):0;
+        kalanGun=qi<acik.length?(top||6):0;
+      }
     }
     return r;
   });
@@ -2300,15 +2306,23 @@ function planRows(ws){
 function planAciklama(r){
   if(r.durum==="arizali") return "MAKİNE ARIZALI DURUMDADIR.";
   if(r.durum==="bakim") return "MAKİNE BAKIMDADIR, ÜRETİM PLANLANMADI.";
-  const seq=[]; let sonIdx=-1;
-  r.cells.forEach((c,i)=>{ if(c.tip==="is"){ sonIdx=i; if(!seq.length||seq[seq.length-1]!==c.o) seq.push(c.o); } });
+  const seq=[];
+  r.cells.forEach(c=>{ if(c.tip==="is" && (!seq.length||seq[seq.length-1]!==c.o)) seq.push(c.o); });
   if(!seq.length) return "MAKİNEDE AÇIK İŞ EMRİ YOK.";
+  /* Tahmini süre işin bugünden sonraki hücrelerinde durur; geçmiş günlerde yoktur. */
+  const sure=o=>{ let t=0; r.cells.forEach(c=>{ if(c.tip==="is"&&c.o===o&&c.top) t=c.top; }); return t; };
+  const sonGun=o=>{ let i=-1; r.cells.forEach((c,k)=>{ if(c.tip==="is"&&c.o===o) i=k; }); return i; };
+  const ilk=seq[0], t=sure(ilk);
+  let s = planAd(ilk)+" ÜRETİMİ "+(t ? t+" GÜN DAHA SÜRER" : "SÜRÜYOR");
   if(seq.length===1){
-    if(r.cells.every(c=>c.tip==="is")) return "HAFTA BOYU ÜRETİME DEVAM EDİLECEKTİR.";
-    return planAd(seq[0])+" ÜRETİMİ "+PLAN_GUN[sonIdx].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR, SONRASI İÇİN İŞ EMRİ BEKLENİYOR.";
+    if(r.cells.every(c=>c.tip==="is")) s+=", HAFTA BOYU DEVAM EDİLECEKTİR.";
+    else s+=", "+PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR; SONRASI İÇİN İŞ EMRİ BEKLENİYOR.";
+  } else {
+    s+=", "+PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR; ";
+    s+=seq.slice(1).map(o=>{ const ts=sure(o); return "ARDINDAN "+planAd(o)+" ÜRETİMİNE BAŞLANACAKTIR"+(ts?" ("+ts+" GÜN)":""); }).join("; ")+".";
   }
-  const adlar=seq.map(planAd);
-  return adlar.slice(0,-1).join(", ")+" ÜRETİMİNDEN SONRA "+adlar[adlar.length-1]+" ÜRETİMİNE BAŞLANACAKTIR.";
+  if(!t) s+=" PLANLANAN ÜRETİM GİRİLMEDİĞİ İÇİN SÜRE HESAPLANAMADI.";
+  return s;
 }
 function planNot(r){ return (r.m&&r.m.notlar&&r.m.notlar[planWS])||""; }
 function planNotYaz(r,v){
@@ -2322,6 +2336,10 @@ function planHucreMetin(c){
   if(c.tip==="arizali") return "MAKİNE ARIZA DURUMUNDA";
   if(c.tip==="bakim") return "MAKİNE BAKIMDA";
   return planAd(c.o);
+}
+function planHucreTam(c){
+  const m=planHucreMetin(c);
+  return (c.tip==="is"&&c.top) ? m+" ("+c.gun+"/"+c.top+". gün)" : m;
 }
 function renderPlan(){
   const rows=planRows(planWS);
@@ -2359,7 +2377,13 @@ function renderPlan(){
       cell.dataset.l=PLAN_GUN[i]+" "+trDate(addDays(planWS,i)).slice(0,5);
       if(c.tip==="is") cell.style.setProperty("--h",planHue(planAd(c.o)));
       cell.appendChild(document.createTextNode(planHucreMetin(c)));
-      if(c.tip==="is"&&c.adet) cell.appendChild(el("small",null,fmt(c.adet)+" adet"));
+      if(c.tip==="is"){
+        const alt=[];
+        if(c.adet) alt.push(fmt(c.adet)+" adet");
+        if(c.top) alt.push(c.gun+"/"+c.top+". gün");
+        else if(c.gun) alt.push(c.gun+". gün");
+        if(alt.length) cell.appendChild(el("small",null,alt.join(" · ")));
+      }
       tr.appendChild(cell);
     });
     const not=el("td","pnot"); not.dataset.l="Açıklama";
@@ -2381,7 +2405,7 @@ function planTable(sep){
   const out=[["Sıra No","Makine Kodu","Makine Adı"].concat(PLAN_GUN).concat(["Açıklama"]).join(sep)];
   rows.forEach(r=>{
     out.push([r.no,r.kod,(r.ad||"")+(r.tip?" "+r.tip:"")]
-      .concat(r.cells.map(planHucreMetin))
+      .concat(r.cells.map(planHucreTam))
       .concat([planNot(r)||planAciklama(r)]).join(sep));
   });
   return out.join("\n");
@@ -2401,7 +2425,7 @@ function buildPrintPlan(){
     tr.appendChild(td(String(r.no))); tr.appendChild(td(r.kod));
     tr.appendChild(td((r.ad||"")+(r.tip?" "+r.tip:"")));
     r.cells.forEach(c=>{
-      const cell=el("td","pcell",planHucreMetin(c));
+      const cell=el("td","pcell",planHucreTam(c));
       cell.style.background = c.tip==="is" ? "hsl("+planHue(planAd(c.o))+" 46% 84%)"
         : c.tip==="arizali" ? "#d32020" : c.tip==="bakim" ? "#e0a300" : "#4a90d9";
       if(c.tip==="arizali"||c.tip==="bos") cell.style.color="#fff";
