@@ -429,6 +429,9 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 /* Çok sütunlu iş emri çizelgesi: punto buildPrint içinde sütun sayısına göre hesaplanır. */
 #printArea table.gen th,#printArea table.gen td{padding:1px 2px}
 #printArea table.gen th{font-size:.93em}
+/* Çizelge Excel'deki gibi düzenli görünsün: satırlar asgari bir yüksekliği tutar,
+   içerik ortalanır; açıklama sütunu geniş olduğu için satırlar aşırı uzamaz. */
+#printArea .pplan tbody td{height:8mm;vertical-align:middle}
 #printArea .pplan .pbaslik{text-align:center;font-weight:700;font-size:11px;padding:2mm 0 1.5mm}
 @media print{
   @page{size:A4 landscape;margin:8mm}
@@ -2562,6 +2565,11 @@ function buildPrintPlan(){
   box.appendChild(el("div","pbaslik","HAFTALIK ÜRETİM PLANLAMA ÇİZELGESİ (HAFTA "+haftaNo(planWS)+")"));
   box.appendChild(el("p","pmeta",trDate(planWS)+" – "+trDate(addDays(planWS,5))));
   const tbl=el("table"), th=el("thead"), htr=el("tr");
+  /* Sıra no dar, açıklama geniş: dar açıklama sütunu satırları gereksiz yere uzatıyordu. */
+  const paylar=[4,9,13].concat(PLAN_GUN.map(()=>11)).concat([21]);
+  const toplam=paylar.reduce((a,b)=>a+b,0), cg=el("colgroup");
+  paylar.forEach(w=>{ const c=document.createElement("col"); c.style.width=(w/toplam*100).toFixed(3)+"%"; cg.appendChild(c); });
+  tbl.appendChild(cg);
   ["Sıra No","Makine Kodu","Makine Adı"].concat(PLAN_GUN).concat(["Açıklama"])
     .forEach(x=>htr.appendChild(el("th",null,x)));
   th.appendChild(htr); tbl.appendChild(th);
