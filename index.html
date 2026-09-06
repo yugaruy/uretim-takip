@@ -431,6 +431,9 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
     -webkit-print-color-adjust:exact;print-color-adjust:exact}
   #printArea table.kap td,#printArea table.kap th{font-size:7px;padding:1px 2px;
     -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* Çok sütunlu iş emri çizelgesi: punto buildPrint içinde sütun sayısına göre hesaplanır. */
+  #printArea table.gen th,#printArea table.gen td{padding:1px 2px}
+  #printArea table.gen th{font-size:.93em}
   #printArea .pplan .pbaslik{text-align:center;font-weight:700;font-size:11px;padding:2mm 0 1.5mm}
 }
 </style>
@@ -3093,14 +3096,29 @@ function buildPrint(){
   const isNum=c=>c.type==="num"||c.calc;
   /* Sütun payları ekrandaki genişliklerden gelir; toplam %100 olduğu için tablo sayfayı tam kaplar. */
   const YAZ=BASE_COLS.filter(c=>!c.rownum);
-  const totW=YAZ.reduce((a,c)=>a+c.w,0), cg=el("colgroup");
-  YAZ.forEach(c=>{ const cc=document.createElement("col"); cc.style.width=(c.w/totW*100).toFixed(3)+"%"; cg.appendChild(cc); });
+  const basliklar=YAZ.map(c=>PRINT_LABEL[c.k||c.c]||c.t||"");
+  const veri=gridRows.map(o=>{ const c=calc(o); return YAZ.map(col=>cellText(o,col,c)); });
+  /* Sütun genişliği ekrandan değil çıktının kendi içeriğinden gelir: en uzun sayı bölünmeden,
+     en uzun başlık kelimesi taşmadan sığsın. Metin sütunları sarabildiği için 12 harfle sınırlı. */
+  const enUzunKelime=s=>String(s).split(/\s+/).reduce((a,k)=>Math.max(a,k.length),0);
+  const paylar=YAZ.map((col,i)=>{
+    let gerek=Math.max(4,enUzunKelime(basliklar[i])*1.15);   /* başlıklar büyük harf: biraz geniş */
+    veri.forEach(r=>{ const v=r[i]||"";
+      gerek=Math.max(gerek, isNum(col)? v.length : Math.min(enUzunKelime(v),12)); });
+    return gerek+2;                                          /* hücre iç boşluğu payı */
+  });
+  const totW=paylar.reduce((a,b)=>a+b,0), cg=el("colgroup");
+  /* Yatay A4'te 8mm kenarla ~1062px kalır; harf eni puntonun kabaca 0,55'i.
+     Sütun ihtiyacı sayfayı aşıyorsa punto küçülür, böylece hiçbir hücre taşmaz. */
+  t.className="gen";
+  t.style.fontSize=Math.max(5.2,Math.min(7.6,1062/(totW*0.55))).toFixed(2)+"px";
+  paylar.forEach(w=>{ const cc=document.createElement("col"); cc.style.width=(w/totW*100).toFixed(3)+"%"; cg.appendChild(cc); });
   t.appendChild(cg);
-  YAZ.forEach(c=>{ htr.appendChild(el("th",isNum(c)?"r":null,PRINT_LABEL[c.k||c.c]||c.t)); });
+  YAZ.forEach((c,i)=>{ htr.appendChild(el("th",isNum(c)?"r":null,basliklar[i])); });
   thead.appendChild(htr); t.appendChild(thead);
-  gridRows.forEach(o=>{
-    const c=calc(o), tr=el("tr");
-    YAZ.forEach(col=>tr.appendChild(el("td",isNum(col)?"r":null,cellText(o,col,c))));
+  veri.forEach(r=>{
+    const tr=el("tr");
+    YAZ.forEach((col,i)=>tr.appendChild(el("td",isNum(col)?"r":null,r[i])));
     tb.appendChild(tr);
   });
   t.appendChild(tb); area.appendChild(t);
