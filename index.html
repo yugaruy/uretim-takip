@@ -410,6 +410,8 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
   @page{size:A4 landscape;margin:8mm}
   html,body{background:#fff}
   body>*{display:none!important}
+  /* Ekrandaki yapışkan başlık yazıcıda satırların üstüne biner: kağıtta normal akış. */
+  th{position:static;z-index:auto}
   #printArea{display:block!important}
   #printArea h1{font:600 13px/1.3 system-ui,sans-serif;margin:0 0 1.5mm}
   #printArea .pmeta{font:10px system-ui,sans-serif;color:#444;margin:0 0 2.5mm}
