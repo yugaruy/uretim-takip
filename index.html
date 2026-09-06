@@ -1,4 +1,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#217346">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Üretim Takip">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Üretim Takip</title>
 <style>
 :root{
@@ -303,6 +310,9 @@ td.pcell small{display:block;font-size:9.5px;font-weight:600;opacity:.72;letter-
 :root[data-theme="dark"] td.pcell.bos{background:#2b5e94;color:#eaf2fb}
 :root[data-theme="dark"] td.pcell.arizali{background:#8f2020;color:#ffecec}
 :root[data-theme="dark"] td.pcell.bakim{background:#7a5c00;color:#fff4d6}
+th.pbugun-bas{background:var(--accent);color:var(--accent-ink)}
+td.pcell.pbugun{outline:2px solid var(--ink);outline-offset:-2px}
+td.pcell.pgecmis{opacity:.62}
 td.pnot{text-align:left}
 td.pnot input{width:100%;border:1px solid transparent;background:transparent;border-radius:5px;padding:4px 6px;
   font-size:11.5px;font-weight:600;text-transform:uppercase}
@@ -443,6 +453,7 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
           <button class="btn sm" id="btnXlsx" hidden>Excel dosyası indir</button>
           <button class="btn sm" id="btnCopyExcel">Excel'e kopyala</button>
           <button class="btn sm" id="btnPrint">Yazdır / PDF</button>
+          <button class="btn sm" id="btnTheme">Koyu tema</button>
           <button class="btn sm" id="btnEdit">Düzenlemeyi aç</button>
           <button class="btn sm" id="btnBackup">Yedek</button>
           <button class="btn sm danger" id="btnClear">Boşalt</button>
@@ -519,6 +530,7 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
         <input type="checkbox" id="dAll"><span style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink-2)">Tüm iş emirlerini göster</span>
       </label>
       <span class="spacer"></span>
+      <button class="btn sm" id="btnOzet">Özeti kopyala</button>
       <span class="count" id="dCount"></span>
     </div>
     <div class="kpis" id="dKpis"></div>
@@ -696,7 +708,7 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "55";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "57";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1123,6 +1135,11 @@ function machineItems(withEmpty){
 }
 function machineOptions(){ return machineItems(false).map(it=>[it.kod, it.ad+(it.tip?" "+it.tip:"")]); }
 function trlow(x){ return String(x==null?"":x).toLocaleLowerCase("tr"); }
+/* Aramada Türkçe harfler birbirinin yerine geçer: "sise" yazan "şişe"yi de bulsun. */
+const ARAMA_HARF={"ı":"i","İ":"i","ş":"s","Ş":"s","ğ":"g","Ğ":"g","ü":"u","Ü":"u","ö":"o","Ö":"o","ç":"c","Ç":"c","â":"a","î":"i","û":"u"};
+function ara(x){
+  return String(x==null?"":x).toLocaleLowerCase("tr").replace(/[ıİşŞğĞüÜöÖçÇâîû]/g,h=>ARAMA_HARF[h]||h);
+}
 function fillMachineSelects(){
   ["#oMachine","#dMachine"].forEach(sel=>{
     const n=$(sel), cur=n.value;
@@ -1303,12 +1320,12 @@ function frozenWidth(){ let w=0; cols.forEach(c=>{ if(c.frozen) w+=c.w; }); retu
 function colX(i){ let x=0; for(let j=0;j<i;j++) x+=cols[j].w; return x; }
 
 function filteredOrders(){
-  const q=$("#oSearch").value.trim().toLocaleLowerCase("tr");
+  const q=ara($("#oSearch").value.trim());
   const m=$("#oMachine").value, st=$("#oStatus").value;
   return S.orders.filter(o=>{
     if(!orderInMonth(o,monthKey)) return false;
     if(m && o.makine!==m) return false;
-    if(q && ((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")).toLocaleLowerCase("tr").indexOf(q)<0) return false;
+    if(q && ara((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")+" "+(o.firma||"")).indexOf(q)<0) return false;
     if(st){
       const c=calc(o);
       if(st==="bos" && (c.J||o.kapali)) return false;
@@ -1960,11 +1977,11 @@ function td(txt,c){ return el("td",c,txt); }
 function todayISO(){ const d=new Date(); return dISO(new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()))); }
 function dailyRows(){
   const date=$("#dDate").value; if(!date) return [];
-  const m=$("#dMachine").value, q=$("#dSearch").value.trim().toLocaleLowerCase("tr"), all=$("#dAll").checked;
+  const m=$("#dMachine").value, q=ara($("#dSearch").value.trim()), all=$("#dAll").checked;
   const from=addDays(date,-45), to=addDays(date,45);
   return S.orders.filter(o=>{
     if(m && o.makine!==m) return false;
-    if(q && (o.ie+" "+o.kod+" "+o.urun).toLocaleLowerCase("tr").indexOf(q)<0) return false;
+    if(q && ara(o.ie+" "+o.kod+" "+o.urun).indexOf(q)<0) return false;
     if(all||q) return true;
     if(o.days[date]!=null) return true;
     for(const k in o.days){ if(k>=from && k<=to && n0(o.days[k])) return true; }
@@ -2244,9 +2261,9 @@ function verim(p){
   return {saat:saat, vardiya:saat*8, gun:saat*24, cevrimGun:86400/c};
 }
 function renderProducts(){
-  const q=$("#prSearch").value.trim().toLocaleLowerCase("tr");
+  const q=ara($("#prSearch").value.trim());
   const use={}; S.orders.forEach(o=>{ use[o.kod]=(use[o.kod]||0)+1; });
-  const list=S.products.filter(p=>!q||(p.kod+" "+p.ad).toLocaleLowerCase("tr").indexOf(q)>=0);
+  const list=S.products.filter(p=>!q||ara(p.kod+" "+p.ad).indexOf(q)>=0);
   $("#prCount").textContent=fmt(list.length)+" ürün";
   const tb=$("#prBody"); tb.innerHTML="";
   const frag=document.createDocumentFragment();
@@ -2435,7 +2452,8 @@ function renderPlan(){
   const hd=$("#plHead"); hd.innerHTML="";
   ["Sıra No","Makine Kodu","Makine Adı"].forEach(x=>hd.appendChild(el("th",null,x)));
   PLAN_GUN.forEach((g,i)=>{
-    const th=el("th",null,g);
+    const gun=addDays(planWS,i);
+    const th=el("th",gun===todayISO()?"pbugun-bas":null,g);
     th.appendChild(el("small",null," "+trDate(addDays(planWS,i)).slice(0,5)));
     hd.appendChild(th);
   });
@@ -2450,7 +2468,9 @@ function renderPlan(){
     if(r.tip) mak.appendChild(el("span","sub",r.tip));
     tr.appendChild(mak);
     r.cells.forEach((c,i)=>{
-      const cell=el("td","pcell "+(c.tip==="is"?(c.ger?"ger":""):c.tip));
+      const g=addDays(planWS,i), bugun=todayISO();
+      const cell=el("td","pcell "+(c.tip==="is"?(c.ger?"ger":""):c.tip)+
+        (g===bugun?" pbugun":(g<bugun?" pgecmis":"")));
       cell.dataset.l=PLAN_GUN[i]+" "+trDate(addDays(planWS,i)).slice(0,5);
       if(c.tip==="is") cell.style.setProperty("--h",planHue(planAd(c.o)));
       cell.appendChild(document.createTextNode(planHucreMetin(c)));
@@ -2513,6 +2533,36 @@ function buildPrintPlan(){
   });
   tbl.appendChild(tb); box.appendChild(tbl); P.appendChild(box);
 }
+
+/* Vardiya sonunda paylaşılacak kısa metin: makine makine üretim, duruş ve boşta kalanlar. */
+function gunOzet(date){
+  const satirlar=[]; let toplam=0, durusToplam=0;
+  machineItems(false).forEach(mi=>{
+    const ad=mi.ad+(mi.tip?" "+mi.tip:"");
+    const m=machineByKod(mi.kod), durum=(m&&m.durum)||"calisiyor";
+    if(durum==="arizali"){ satirlar.push(ad+": arızalı"); return; }
+    if(durum==="bakim"){ satirlar.push(ad+": bakımda"); return; }
+    let adet=0, durus=0; const urunler=[];
+    S.orders.forEach(o=>{
+      if(o.makine!==mi.kod) return;
+      const v=n0(o.days&&o.days[date]);
+      if(v){ adet+=v; const u=o.urun||o.kod||o.ie; if(u&&urunler.indexOf(u)<0) urunler.push(u); }
+      durus+=n0(durOf(o,date));
+    });
+    if(!adet && !durus){ satirlar.push(ad+": üretim girilmedi"); return; }
+    let t=ad+(urunler.length?" · "+urunler.join(", "):"")+": "+fmt(adet)+" adet";
+    if(durus) t+=" · "+fmt1(durus)+" sa duruş";
+    satirlar.push(t);
+    toplam+=adet; durusToplam+=durus;
+  });
+  const alt="Toplam: "+fmt(toplam)+" adet"+(durusToplam?" · "+fmt1(durusToplam)+" sa duruş":"");
+  return [trDate(date)+" · Günlük Üretim Özeti"].concat(satirlar).concat([alt]).join("\n");
+}
+$("#btnOzet").addEventListener("click",()=>{
+  const d=$("#dDate").value;
+  if(!d){ toast("Önce bir gün seç"); return; }
+  toClipboard(gunOzet(d), trDate(d)+" özeti panoya kopyalandı");
+});
 
 /* ---------- MAKİNE KAPASİTE RAPORU ---------- */
 /* Bir makinenin bir aydaki toplam kapasitesi, o ay çalıştığı ve durduğu saatlerin
@@ -2841,13 +2891,13 @@ function silHucre(sil){
   b.addEventListener("click",sil); c.appendChild(b); return c;
 }
 function renderBakim(){
-  const q=$("#bkSearch").value.trim().toLocaleLowerCase("tr");
+  const q=ara($("#bkSearch").value.trim());
   const tur=$("#bkTur").value, from=$("#bkFrom").value, to=$("#bkTo").value;
   const list=S.bakim.filter(x=>{
     if(!tarihArasi(x.tarih||"",from,to)) return false;
     if(tur && (x.tur||"ARIZA")!==tur) return false;
     if(!q) return true;
-    return (machineLabel(x.makine)+" "+(x.sebep||"")+" "+(x.islem||"")).toLocaleLowerCase("tr").indexOf(q)>=0;
+    return ara(machineLabel(x.makine)+" "+(x.sebep||"")+" "+(x.islem||"")).indexOf(q)>=0;
   }).sort((a,b)=>String(b.tarih||"").localeCompare(String(a.tarih||"")));
   let sure=0, maliyet=0; list.forEach(x=>{ sure+=n0(x.sure); maliyet+=n0(x.maliyet); });
   $("#bkCount").textContent=fmt(list.length)+" kayıt · "+fmt1(sure)+" saat · "+fmt(maliyet)+" ₺";
@@ -2880,9 +2930,9 @@ $("#btnNewBakim").addEventListener("click",()=>{
 
 /* ---------- MAKİNELER ---------- */
 function renderMachines(){
-  const q=$("#mcSearch").value.trim().toLocaleLowerCase("tr");
+  const q=ara($("#mcSearch").value.trim());
   const use={}; S.orders.forEach(o=>{ if(o.makine) use[o.makine]=(use[o.makine]||0)+1; });
-  const list=S.machines.filter(m=>!q||((m.kod||"")+" "+(m.ad||"")+" "+(m.tip||"")).toLocaleLowerCase("tr").indexOf(q)>=0);
+  const list=S.machines.filter(m=>!q||ara((m.kod||"")+" "+(m.ad||"")+" "+(m.tip||"")).indexOf(q)>=0);
   $("#mcCount").textContent=fmt(list.length)+" makine";
   const tb=$("#mcBody"); tb.innerHTML="";
   const frag=document.createDocumentFragment();
@@ -3346,6 +3396,22 @@ if(!window.claude){
   _sc.onload=function(){ $("#btnXlsx").hidden=false; };
   document.head.appendChild(_sc);
 }
+/* Tema seçimi bu tarayıcıda saklanır; seçilmediyse işletim sisteminin tercihi geçerli. */
+const TKEY="uretim-takip-tema";
+function temaUygula(t){
+  if(t) document.documentElement.setAttribute("data-theme",t);
+  else document.documentElement.removeAttribute("data-theme");
+  const koyu = t==="dark" || (!t && window.matchMedia("(prefers-color-scheme:dark)").matches);
+  $("#btnTheme").textContent = koyu ? "Açık tema" : "Koyu tema";
+}
+let tema=""; try{ tema=localStorage.getItem(TKEY)||""; }catch(e){}
+temaUygula(tema);
+$("#btnTheme").addEventListener("click",()=>{
+  const koyu = tema==="dark" || (!tema && window.matchMedia("(prefers-color-scheme:dark)").matches);
+  tema = koyu ? "light" : "dark";
+  try{ localStorage.setItem(TKEY,tema); }catch(e){}
+  temaUygula(tema);
+});
 /* Araç şeridi geniş ekranda hep açık durur; dar ekranda dokunmayla açılan listeye döner. */
 const _darMq = window.matchMedia("(max-width:860px)");
 function toolsMode(){ $("#toolsMenu").open = !_darMq.matches; }
