@@ -2589,6 +2589,21 @@ function buildPrintPlan(){
     tb.appendChild(tr);
   });
   tbl.appendChild(tb); box.appendChild(tbl); P.appendChild(box);
+  planSatirEsitle(tbl,P);
+}
+/* Çizelgenin bölmeleri eşit görünsün: bütün satırlar en uzun satır kadar olur. Ölçüm için
+   çıktı kâğıt eninde geçici olarak ekran dışına alınır. Eşitleme sayfayı taşıracaksa
+   vazgeçilir, tek sayfada kalmak satır eşitliğinden önemli. */
+function planSatirEsitle(tbl,P){
+  const KAGIT=733;                      /* yatay A4'te 8mm kenarla kalan yükseklik, piksel */
+  const acikti=document.body.classList.contains("pdfyap");
+  if(!acikti) document.body.classList.add("pdfyap");
+  const satirlar=Array.prototype.slice.call(tbl.querySelectorAll("tbody tr"));
+  let en=0;
+  satirlar.forEach(tr=>{ en=Math.max(en,tr.getBoundingClientRect().height); });
+  satirlar.forEach(tr=>{ tr.style.height=Math.ceil(en)+"px"; });
+  if(P.getBoundingClientRect().height>KAGIT) satirlar.forEach(tr=>{ tr.style.height=""; });
+  if(!acikti) document.body.classList.remove("pdfyap");
 }
 
 /* Vardiya sonunda paylaşılacak kısa metin: makine makine üretim, duruş ve boşta kalanlar. */
