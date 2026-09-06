@@ -1073,7 +1073,7 @@ function boot(){
   stampMonths(S.orders);
   autoSync(); onFirstData();
   fillMachineSelects(); render(); applyReadonly(); paintStatus();
-  cloudBoot().then(applyReadonly);
+  cloudBoot().then(applyReadonly).catch(()=>{}).then(hashYazdir);
   setInterval(()=>cloudPull(false),20000);
   setInterval(surumKontrol,1800000); setTimeout(surumKontrol,15000);
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") cloudPull(false); });
@@ -3153,7 +3153,7 @@ $("#btnEdit").addEventListener("click",()=>{
     setTimeout(()=>inp.focus(),0);
   });
 });
-$("#btnPrint").addEventListener("click",()=>{
+function yazdirCalistir(){
   if(view==="rapor"){ renderRapor(); buildPrintRapor(); window.print(); return; }
   if(view==="plan"){ renderPlan(); buildPrintPlan(); window.print(); return; }
   if(view==="daily"){
@@ -3165,7 +3165,41 @@ $("#btnPrint").addEventListener("click",()=>{
   renderOrders();
   if(!gridRows.length){ toast("Bu ayda yazdırılacak iş emri yok"); return; }
   buildPrint(); window.print();
+}
+/* iOS'ta ana ekrana eklenen uygulamada window.print() sessizce hiçbir şey yapmaz; düğme
+   tepkisiz görünür. O modda aynı sayfa Safari'de açılır, yazdırma orada kendiliğinden başlar. */
+function pwaModu(){
+  try{ return window.navigator.standalone===true || matchMedia("(display-mode: standalone)").matches; }
+  catch(e){ return false; }
+}
+function yazdirAnahtar(){
+  if(view==="rapor") return $("#rpYil").value;
+  if(view==="plan") return planWS;
+  if(view==="daily") return $("#dDate").value;
+  return monthKey;
+}
+$("#btnPrint").addEventListener("click",()=>{
+  if(pwaModu()){
+    const hangi = (view==="rapor"||view==="plan"||view==="daily") ? view : "orders";
+    const adres = location.href.split("#")[0]+"#yazdir="+hangi+"&d="+encodeURIComponent(yazdirAnahtar());
+    if(window.open(adres,"_blank")) return;     /* açılmazsa normal yol denenir */
+  }
+  yazdirCalistir();
 });
+/* Safari'de açılan sekme adresteki isteği kurar ve yazdırır; adres sonra temizlenir ki
+   sayfa yenilenince tekrar yazdırma penceresi açılmasın. */
+function hashYazdir(){
+  const m=/^#yazdir=([a-z]+)&d=(.*)$/.exec(location.hash||"");
+  if(!m) return;
+  history.replaceState(null,"",location.pathname+location.search);
+  const v=m[1], d=decodeURIComponent(m[2]);
+  if(v==="rapor") $("#rpYil").value=d;
+  else if(v==="plan") planWS=d;
+  else if(v==="daily") $("#dDate").value=d;
+  else { monthAuto=false; monthKey=d; headBuilt=""; }
+  setView(v);
+  setTimeout(yazdirCalistir,300);
+}
 window.addEventListener("afterprint",()=>{ $("#printArea").innerHTML=""; });
 $("#btnCopyExcel").addEventListener("click",()=>{
   if(view==="plan"){ toClipboard(planTable("\t"), "Haftalık plan panoya kopyalandı, Excel'e yapıştır"); return; }
