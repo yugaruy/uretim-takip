@@ -553,7 +553,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
         <th class="r">Teorik Çevrim (sn)</th><th class="r">Gerçek Çevrim (sn)</th>
         <th class="r">Günlük Teorik Üretim</th><th class="r">Günlük Üretim</th>
         <th class="r">Günlük Verim</th><th class="r">Çevrim Performansı</th><th class="r">Plan Gerçekleşme</th>
-        <th class="r">Duruş (saat)</th>
+        <th class="r">Duruş (saat)</th><th>Duruş Sebebi</th><th>Duruş Notu</th>
       </tr></thead>
       <tbody id="dBody"></tbody>
     </table></div></div>
@@ -1100,7 +1100,9 @@ function calc(o){
   /* Maliyet çevrimi: kapalı gözler yüzünden bir parçanın makineye maliyeti kaç saniye.
      Çalışma süresi verimliliği: planlanan çalışmanın gerçekleşene oranı. */
   const maliyetCevrim = (n0(o.gcevrim)>0 && n0(o.cgoz)>0) ? n0(o.gcevrim)*n0(o.kgoz)/n0(o.cgoz) : 0;
-  const calisVerim = L ? K/L : 0;
+  /* Duruş, makinenin üretmeden geçirdiği süredir: çalışılan saate eklenip verimi düşürür. */
+  const durusSaat = n0(o.durus);
+  const calisVerim = (L+durusSaat) ? K/(L+durusSaat) : 0;
   const N = Math.max(L-K,0);            // Fazla çalışma
   const pr = productBy(o.kod);
   const V = pr && pr.gramaj ? n0(pr.gramaj)*n0(o.hatali)/1000 : 0; // Hammadde firesi (kg)
@@ -2015,7 +2017,7 @@ function renderDaily(){
   $("#dCount").textContent = fmt(list.length)+" iş emri listeleniyor";
   let dayTotal=0, dayHours=0, entered=0, teorikTop=0, perfTop=0, perfN=0, durusTop=0;
   const tb=$("#dBody"); tb.innerHTML="";
-  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=14; tr.appendChild(c); tb.appendChild(tr); }
+  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=16; tr.appendChild(c); tb.appendChild(tr); }
   const frag=document.createDocumentFragment();
   list.forEach(o=>{
     const c=calc(o), v=n0(o.days[date]);
@@ -2051,6 +2053,21 @@ function renderDaily(){
     if(!canEdit()) dinp.readOnly=true;
     dinp.addEventListener("change", ()=>{ setDur(o,date,dinp.value); renderDaily(); });
     durTd.appendChild(dinp); tr.appendChild(durTd);
+    const b=durBilgi(o,date);
+    const sTd=el("td"), sel2=el("select");
+    sel2.appendChild(el("option",null,"—"));
+    DURUS_SEBEP.forEach(x=>{ const op=el("option",null,x); op.value=x; sel2.appendChild(op); });
+    sel2.value=b.s||"";
+    sel2.disabled=!canEdit();
+    sel2.setAttribute("aria-label", o.ie+" — "+trDate(date)+" duruş sebebi");
+    sel2.addEventListener("change",()=>{ setDurBilgi(o,date,"s",sel2.value); });
+    sTd.appendChild(sel2); tr.appendChild(sTd);
+    const nTd=el("td"), ninp=el("input");
+    ninp.type="text"; ninp.style.width="100%"; ninp.value=b.n||""; ninp.placeholder="—";
+    ninp.readOnly=!canEdit();
+    ninp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" duruş notu");
+    ninp.addEventListener("change",()=>{ setDurBilgi(o,date,"n",ninp.value); });
+    nTd.appendChild(ninp); tr.appendChild(nTd);
     frag.appendChild(tr);
   });
   tb.appendChild(frag);
@@ -2071,12 +2088,25 @@ function kpi(label,val,foot){
   return d;
 }
 /* Güne ait duruş saati. İş emrinin toplam duruşu bu girişlerin toplamı olarak güncellenir. */
+const DURUS_SEBEP=["Arıza","Planlı bakım","Kalıp değişimi","Malzeme yok","Diğer"];
 function durOf(o,date){ return o.dur && o.dur[date]!=null ? o.dur[date] : null; }
+function durBilgi(o,date){ return (o.durB && o.durB[date]) || {}; }
+function setDurBilgi(o,date,alan,deger){
+  if(!canEdit()) return;
+  o.durB=o.durB||{};
+  const b=o.durB[date]||(o.durB[date]={});
+  const v=String(deger||"").trim();
+  if(v) b[alan]=v; else delete b[alan];
+  if(!Object.keys(b).length) delete o.durB[date];
+  if(!Object.keys(o.durB).length) delete o.durB;
+  saveOrder(o);
+}
 function durToplam(o){ let t=0; for(const k in (o.dur||{})) t+=n0(o.dur[k]); return t; }
 function setDur(o,date,text){
   const v=parseNum(text);
   o.dur=o.dur||{};
   if(v==null||!v) delete o.dur[date]; else o.dur[date]=v;
+  if(!o.dur[date] && o.durB) { delete o.durB[date]; if(!Object.keys(o.durB).length) delete o.durB; }
   if(Object.keys(o.dur).length){ o.durus=durToplam(o); } else delete o.dur;
   saveOrder(o);
 }
@@ -2815,7 +2845,7 @@ function raporVeri(yil){
   const bas=yil+"-01-01", bit=yil+"-12-31";
   const aylar=[]; for(let i=0;i<12;i++) aylar.push({ad:MONTHS[i],uretim:0,saat:0,durus:0});
   const emirler=[];
-  const makine={}, firma={};
+  const makine={}, firma={}, sebep={};
   let plan=0,uretim=0,hatali=0,saat=0,planSaat=0,fazla=0,durus=0,fire=0;
   S.orders.forEach(o=>{
     let yilAdet=0, gun=0;
@@ -2825,6 +2855,13 @@ function raporVeri(yil){
     /* Saatler yıl payına göre bölünür: iş emri iki yıla yayılmışsa her yıl kendi payını alır. */
     const pay = c.T ? yilAdet/c.T : 0;
     const oSaat=c.L*pay, oPlanSaat=c.K*pay, oDurus=n0(o.durus)*pay, oHatali=n0(o.hatali)*pay;
+    /* Duruşlar sebebiyle birlikte: gün gün girildiği için yıl payına bölmeye gerek yok. */
+    for(const g in (o.dur||{})){
+      const sa=n0(o.dur[g]); if(!sa || g<bas || g>bit) continue;
+      const ad=(durBilgi(o,g).s)||"Belirtilmemiş";
+      if(!sebep[ad]) sebep[ad]={saat:0,kez:0};
+      sebep[ad].saat+=sa; sebep[ad].kez++;
+    }
     emirler.push({o:o,c:c,adet:yilAdet,gun:gun,saat:oSaat,planSaat:oPlanSaat,durus:oDurus});
     plan+=n0(o.plan)*pay; uretim+=yilAdet-oHatali; hatali+=oHatali;
     saat+=oSaat; planSaat+=oPlanSaat; fazla+=c.N*pay; durus+=oDurus; fire+=c.V*pay;
@@ -2852,7 +2889,7 @@ function raporVeri(yil){
     if(!urun[k]) urun[k]={ad:e.o.urun||"",adet:0,ie:0};
     urun[k].adet+=e.adet; urun[k].ie++;
   });
-  return {yil:yil,emirler:emirler,aylar:aylar,makine:makine,firma:firma,urun:urun,
+  return {yil:yil,emirler:emirler,aylar:aylar,makine:makine,firma:firma,sebep:sebep,urun:urun,
     bakim:bakim,bakimSure:bakimSure,bakimMaliyet:bakimMaliyet,
     plan:plan,uretim:uretim,hatali:hatali,saat:saat,planSaat:planSaat,fazla:fazla,durus:durus,fire:fire};
 }
@@ -2901,6 +2938,14 @@ function raporSatirlar(v){
     s:mk.map(k=>{ const m=v.makine[k], top=m.saat+m.durus+m.bakimSure;
       return [machineLabel(k),fmt(m.ie),fmt(m.adet),fmt1(m.saat),fmt1(m.durus),fmt1(m.bakimSure),
         top?pctS((m.durus+m.bakimSure)/top):"—",fmt(m.maliyet)+" ₺"]; })});
+  /* Duruş sebepleri: hangi sebep ne kadar saat yedi. */
+  const sb=Object.keys(v.sebep).sort((a,b)=>v.sebep[b].saat-v.sebep[a].saat);
+  const sbTop=sb.reduce((t,k)=>t+v.sebep[k].saat,0);
+  R.push({b:"Duruş sebepleri", a:"Dönemde sebebe göre duruş saati",
+    h:["Sebep","Kayıt","Duruş (saat)","Pay"],
+    z:[0,1,1,1],
+    s:sb.map(k=>{ const d=v.sebep[k];
+      return [k,fmt(d.kez),fmt1(d.saat),sbTop?pctS(d.saat/sbTop):"—"]; })});
   /* Firma: üretim dağılımı. */
   const fm=Object.keys(v.firma).sort((a,b)=>v.firma[b].adet-v.firma[a].adet);
   R.push({b:"Firma dağılımı", a:"Dönemde firma başına planlanan ve üretilen adet",
@@ -3102,7 +3147,7 @@ function buildPrintDaily(){
   const date=$("#dDate").value;
   area.appendChild(el("h1",null,"Günlük Üretim Performans Raporu"));
   area.appendChild(el("p","pmeta","Tarih: "+trDate(date)+" · "+gunAdi(date)+" · "+$("#dCount").textContent));
-  const paylar=[92,150,108,58,58,58,70,70,86,74,66,78,78,64];
+  const paylar=[92,150,108,58,58,58,70,70,86,74,66,78,78,64,86,140];
   const top=paylar.reduce((a,b)=>a+b,0);
   const t=el("table"), cg=el("colgroup"), thead=el("thead"), htr=el("tr"), tb=el("tbody");
   paylar.forEach(w=>{ const c=document.createElement("col"); c.style.width=(w/top*100).toFixed(3)+"%"; cg.appendChild(c); });
@@ -3114,8 +3159,8 @@ function buildPrintDaily(){
     if(tr.querySelector("td.empty")) return;
     const ntr=el("tr");
     Array.prototype.forEach.call(tr.children,(cell,i)=>{
-      const inp=cell.querySelector("input");
-      let v = inp ? (inp.value.trim() || (i===13?"Yok":"")) : cell.textContent.trim();
+      const inp=cell.querySelector("input"), sec=cell.querySelector("select");
+      let v = sec ? (sec.value||"") : inp ? (inp.value.trim() || (i===13?"Yok":"")) : cell.textContent.trim();
       if(i===1){ const st=cell.querySelector(".strong"), sb=cell.querySelector(".sub");
         v=(st?st.textContent:"")+(sb&&sb.textContent?" ("+sb.textContent+")":""); }
       ntr.appendChild(el("td",i>2?"r":null,v));
