@@ -1184,7 +1184,7 @@ const BASE_COLS=[
   {k:"kod", g:"kimlik",  t:"Stok Kodu",          w:106, type:"code", frozen:true},
   {k:"urun", g:"kimlik", t:"Ürün",               w:224, type:"product", frozen:true},
   {k:"firma", g:"kimlik", t:"Firma",                w:150, type:"text"},
-  {k:"kapali", g:"kimlik",  t:"Durum",               w:64, type:"flag"},
+  {k:"kapali", g:"kimlik",  t:"Durum",               w:96, type:"flag"},
   {k:"cevrim", g:"cevrim",  t:"Çevrim Süresi",       w:84, type:"num", dec:2},
   {k:"gcevrim", g:"cevrim", t:"Gerçekleşen Çevrim",  w:92, type:"num", dec:2},
   {k:"kgoz", g:"goz", t:"Kalıp Göz Sayısı",   w:78, type:"num"},
@@ -1365,6 +1365,14 @@ function computeRows(){
   if(sel.r>=rows.length) sel.r=Math.max(0,rows.length-1);
   $("#oCount").textContent=fmt(rows.length)+" iş emri";
 }
+/* İş emrinin durumu: süzgeçteki durum mantığının birebir karşılığı, hiçbir satır boş kalmaz. */
+function durumAdi(o,c){
+  if(o.kapali) return "Kapalı";
+  const hedef=n0(o.plan), uretim=(c||calc(o)).J;
+  if(hedef && uretim>=hedef) return "Tamamlandı";
+  if(uretim>0) return "Devam ediyor";
+  return "Başlamadı";
+}
 function cellText(o,col,c){
   if(col.weekly){ let s=0; for(let i=0;i<6;i++) s+=n0(o.days[addDays(col.week,i)]); return s? fmt2(c.Q? s/c.Q : 0) : ""; }
   if(col.type==="day"){ const v=o.days[col.date]; return v==null?"":fmt(v); }
@@ -1376,7 +1384,7 @@ function cellText(o,col,c){
     if(!v) return "";
     return col.dec? fmt2(v) : fmt(v);
   }
-  if(col.type==="flag") return o.kapali?"Kapalı":"";
+  if(col.type==="flag") return durumAdi(o,c);
   if(col.type==="select") return o.makine?machineLabel(o.makine):"";
   const v=o[col.k];
   if(col.type==="num") return v==null||v===""?"":(col.dec?fmt2(v):fmt(v));
@@ -1586,7 +1594,7 @@ function startEdit(seedChar){
   if(!canEdit()){ saltUyar(); return; }
   const o=gridRows[sel.r], col=cols[sel.c];
   if(col&&col.rownum) return;
-  if(col&&col.type==="flag"){ toast("Bu sütun “İş emrini kapat” düğmesiyle değişir"); return; }
+  if(col&&col.type==="flag"){ toast("Durum kendiliğinden hesaplanır; kapatmak için “İş emrini kapat” düğmesini kullan"); return; }
   if(!o||!col||col.calc){ if(col&&col.calc) toast("Bu sütun kendiliğinden hesaplanır"); return; }
   const cell=$("#gridBody td.active"); if(!cell) return;
   cell.classList.add("editing"); cell.textContent="";
@@ -3528,7 +3536,7 @@ function table(sep){
       dec(c.J),dec(c.K.toFixed(2)),dec(c.L.toFixed(2)),dec((c.M*100).toFixed(2)),dec(c.N.toFixed(2)),dec(o.durus),
       dec(c.P.toFixed(2)),dec(c.Q.toFixed(2)),dec(c.R.toFixed(0)),dec(c.S.toFixed(0)),dec(o.hatali),dec(c.V.toFixed(3)),
       dec(c.vardiya.toFixed(0)),dec(c.maliyetCevrim.toFixed(2)),dec((c.calisVerim*100).toFixed(2)),
-      c.son?trDate(c.son):"",o.kapali?"Kapalı":""].map(q).join(sep));
+      c.son?trDate(c.son):"",durumAdi(o,c)].map(q).join(sep));
   });
   return lines.join("\r\n");
 }
