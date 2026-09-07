@@ -2043,6 +2043,7 @@ function renderDaily(){
     inp.value = dayExp(o,date) || (o.days[date]!=null ? o.days[date] : "");
     inp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" üretim adedi; vardiyaları artı ile toplayabilirsin");
     inp.title="Vardiyaları artı ile yazabilirsin: 12000+13500+11000";
+    inp.readOnly=!canEdit();
     inp.addEventListener("input", ()=>{ setDay(o, date, inp.value); });
     inp.addEventListener("change", ()=>{ renderDaily(); });
     inTd.appendChild(inp); tr.appendChild(inTd);
@@ -2151,6 +2152,7 @@ function dayExp(o,date){ return o.exp && o.exp[date] ? o.exp[date] : ""; }
 function clearDay(o,date){ delete o.days[date]; if(o.exp) delete o.exp[date]; }
 /* Hücreye yazılanı çözer; artılı yazıldıysa hem toplamı hem yazılışı saklar. */
 function setDay(o,date,text){
+  if(!canEdit()) return;                       /* düzenleme kapalıyken üretim adedi de değişmesin */
   const t=String(text==null?"":text).trim();
   if(!t){ clearDay(o,date); saveOrder(o); return; }
   const v=parseNum(t);
