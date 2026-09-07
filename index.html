@@ -542,6 +542,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
         <input type="checkbox" id="dAll"><span style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink-2)">Tüm iş emirlerini göster</span>
       </label>
       <span class="spacer"></span>
+      <button class="btn sm primary" id="dNewOrder">Yeni iş emri</button>
       <button class="btn sm" id="btnOzet">Özeti kopyala</button>
       <span class="count" id="dCount"></span>
     </div>
@@ -1045,7 +1046,7 @@ function saltUyar(){
 }
 function applyReadonly(){
   const on=canEdit();
-  ["#btnNew","#btnDelRow","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine","#btnNewBakim"]
+  ["#btnNew","#dNewOrder","#btnDelRow","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine","#btnNewBakim"]
     .forEach(id=>{ const b=$(id); if(b) b.hidden=!on; });
   $("#btnEdit").textContent = on&&cloudOn() ? "Düzenlemeyi kapat" : "Düzenlemeyi aç";
   $("#btnEdit").hidden = !cloudOn();
@@ -1884,6 +1885,62 @@ $("#btnNew").addEventListener("click",()=>{
   sortK=""; sortDir=1; renderOrders();
   const i=gridRows.indexOf(o); if(i>=0){ sel.r=i; sel.c=1; sel.ar=i; sel.ac=1; ensureVisible(); renderBody(); }
   toast("Satır eklendi — stok kodunu girince ürün bilgileri dolar");
+});
+/* Günlük Giriş'ten iş emri açma: kimlik bilgileri burada bir kez toplanır, iş emri
+   oluşturulunca aynı ekranda o günün satırı hazır gelir. */
+$("#dNewOrder").addEventListener("click",()=>{
+  if(!canEdit()){ saltUyar(); return; }
+  openPanel("yeniIsEmri",d=>{
+    d.appendChild(el("h3",null,"Yeni iş emri"));
+    d.appendChild(el("p","hint","Stok kodunu girince ürün adı, çevrim süresi ve kalıp gözü ürün listesinden dolar. Üretim adedini aşağıdaki günlük tablodan gireceksin."));
+    const alanlar={};
+    const yap=(anahtar,etiket,ipucu)=>{
+      const l=el("label","field"); l.appendChild(el("span",null,etiket));
+      const i=el("input"); i.type="text"; if(ipucu) i.placeholder=ipucu;
+      l.appendChild(i); alanlar[anahtar]=i; return l;
+    };
+    const sat1=el("div","row");
+    sat1.appendChild(yap("ie","İş emri no","ICSIP091 004"));
+    sat1.appendChild(yap("kod","Stok kodu","151EN0260"));
+    d.appendChild(sat1);
+    const sat2=el("div","row");
+    const lm=el("label","field"); lm.appendChild(el("span",null,"Makine"));
+    const ms=el("select"); ms.appendChild(new Option("Seçilmedi",""));
+    machineOptions().forEach(([k,l])=>ms.appendChild(new Option(l,k)));
+    lm.appendChild(ms); sat2.appendChild(lm); alanlar.makine=ms;
+    sat2.appendChild(yap("plan","Hedef adet","150000"));
+    d.appendChild(sat2);
+    const bilgi=el("p","hint",""); d.appendChild(bilgi);
+    const goster=()=>{ const pr=productBy(alanlar.kod.value.trim());
+      bilgi.textContent = !alanlar.kod.value.trim() ? ""
+        : pr ? "Ürün: "+pr.ad+(pr.cevrim!=null?" · çevrim "+fmt2(pr.cevrim)+" sn":"")+(pr.goz!=null?" · "+fmt(pr.goz)+" göz":"")
+             : "Bu stok kodu ürün listesinde yok; ürün adını sonra İş Emirleri sekmesinden yazabilirsin."; };
+    alanlar.kod.addEventListener("input",goster);
+    const row=el("div","row"), ok=el("button","btn primary","Oluştur"), cl=el("button","btn","Vazgeç");
+    ok.addEventListener("click",()=>{
+      const ie=alanlar.ie.value.trim();
+      if(!ie){ toast("İş emri numarası gerekli"); alanlar.ie.focus(); return; }
+      if(S.orders.some(x=>trlow(x.ie)===trlow(ie))){ toast("Bu iş emri numarası zaten var"); alanlar.ie.select(); return; }
+      const gun=$("#dDate").value||todayISO();
+      const o={_id:newId(),ie:ie,kod:alanlar.kod.value.trim(),urun:"",cevrim:null,gcevrim:null,kgoz:null,cgoz:null,
+        makine:ms.value,plan:parseNum(alanlar.plan.value),durus:null,hatali:null,days:{},ay:gun.slice(0,7)};
+      const pr=productBy(o.kod);
+      if(pr){ o.urun=pr.ad;
+        if(pr.cevrim!=null){ o.cevrim=pr.cevrim; o.gcevrim=pr.cevrim; }
+        if(pr.goz!=null){ o.kgoz=pr.goz; o.cgoz=pr.goz; } }
+      S.orders.push(o); saveOrder(o);
+      closePanel();
+      $("#dSearch").value=ie; $("#dMachine").value="";
+      renderDaily();
+      const satir=$("#dBody").querySelector("tr"); if(satir){ const g=satir.querySelector("input"); if(g) g.focus(); }
+      toast("İş emri açıldı — üretim adedini bu satıra gir");
+    });
+    cl.addEventListener("click",closePanel);
+    alanlar.ie.addEventListener("keydown",e=>{ if(e.key==="Enter") alanlar.kod.focus(); });
+    alanlar.plan.addEventListener("keydown",e=>{ if(e.key==="Enter") ok.click(); });
+    row.appendChild(ok); row.appendChild(cl); d.appendChild(row);
+    setTimeout(()=>alanlar.ie.focus(),0);
+  });
 });
 $("#btnDelRow").addEventListener("click",()=>{
   const o=gridRows[sel.r]; if(!o){ toast("Önce bir satır seç"); return; }
