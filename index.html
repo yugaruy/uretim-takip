@@ -552,6 +552,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
         <th class="r">Toplam Göz</th><th class="r">Kapalı Göz</th><th class="r">Aktif Göz</th>
         <th class="r">Teorik Çevrim (sn)</th><th class="r">Gerçek Çevrim (sn)</th>
         <th class="r">Günlük Teorik Üretim</th><th class="r">Günlük Üretim</th>
+        <th class="r">Hatalı (adet)</th>
         <th class="r">Günlük Verim</th><th class="r">Çevrim Performansı</th><th class="r">Plan Gerçekleşme</th>
         <th class="r">Duruş (saat)</th><th>Duruş Sebebi</th><th>Duruş Notu</th>
       </tr></thead>
@@ -1205,13 +1206,13 @@ const BASE_COLS=[
   {c:"M", g:"uretim",    t:"Sapma Oranı",        w:82, calc:true, pct:true},
   {c:"calisVerim", g:"uretim", t:"Çalışma Süresi Verimliliği", w:96, calc:true, pct:true},
   {c:"N", g:"uretim",    t:"Fazla Çalışma",      w:86, calc:true, dec:2},
-  {k:"durus", g:"uretim",t:"Arıza / Duruş",      w:82, type:"num", dec:2},
+  {k:"durus", g:"uretim",t:"Arıza / Duruş",      w:82, type:"num", dec:2, salt:true},
   {c:"P", g:"uretim",    t:"Saatlik Kapasite",  w:94, calc:true},
   {c:"Q", g:"uretim",    t:"Saatlik Üretim",      w:94, calc:true},
   {c:"vardiya", g:"uretim", t:"Teorik Vardiya (8 sa)", w:96, calc:true},
   {c:"R", g:"uretim",    t:"Günlük Kapasite",        w:96, calc:true},
   {c:"S", g:"uretim",    t:"Günlük Üretim",   w:96, calc:true},
-  {k:"hatali", g:"hata", t:"Hatalı Üretim",    w:88, type:"num"},
+  {k:"hatali", g:"hata", t:"Hatalı Üretim",    w:88, type:"num", salt:true},
   {c:"V", g:"hata",    t:"Hammadde Firesi",    w:92, calc:true, dec:2}
 ];
 let cols=[], gridRows=[], monthKey="", sortK="", sortDir=1;
@@ -1499,7 +1500,7 @@ function paintFbar(){
   else if(col.type==="select") v=o.makine?machineLabel(o.makine):"";
   else v=o[col.k]==null?"":String(o[col.k]);
   inp.value=v;
-  inp.readOnly = !canEdit() || !!col.calc || !!col.rownum || col.type==="flag" || col.type==="select";
+  inp.readOnly = !canEdit() || !!col.calc || !!col.salt || !!col.rownum || col.type==="flag" || col.type==="select";
 }
 function paintCellInfo(){
   const o=gridRows[sel.r], col=cols[sel.c];
@@ -1600,6 +1601,7 @@ function startEdit(seedChar){
   const o=gridRows[sel.r], col=cols[sel.c];
   if(col&&col.rownum) return;
   if(col&&col.type==="flag"){ toast("Durum, planlanan üretim adedi dolunca kendiliğinden değişir"); return; }
+  if(col&&col.salt){ toast(col.k==="durus" ? "Duruş, Günlük Giriş'ten tarihi ve sebebiyle girilir" : "Hatalı üretim, Günlük Giriş'ten güne yazılır"); return; }
   if(!o||!col||col.calc){ if(col&&col.calc) toast("Bu sütun kendiliğinden hesaplanır"); return; }
   const cell=$("#gridBody td.active"); if(!cell) return;
   cell.classList.add("editing"); cell.textContent="";
@@ -2007,6 +2009,8 @@ function dailyRows(){
     if(q && ara(o.ie+" "+o.kod+" "+o.urun).indexOf(q)<0) return false;
     if(all||q) return true;
     if(o.days[date]!=null) return true;
+    /* O güne yalnız duruş ya da hatalı girilmiş iş emri de listede kalsın. */
+    if(durOf(o,date)!=null || hatOf(o,date)!=null) return true;
     for(const k in o.days){ if(k>=from && k<=to && n0(o.days[k])) return true; }
     return false;
   });
@@ -2015,15 +2019,15 @@ function renderDaily(){
   const date=$("#dDate").value;
   const list=dailyRows();
   $("#dCount").textContent = fmt(list.length)+" iş emri listeleniyor";
-  let dayTotal=0, dayHours=0, entered=0, teorikTop=0, perfTop=0, perfN=0, durusTop=0;
+  let dayTotal=0, dayHours=0, entered=0, teorikTop=0, perfTop=0, perfN=0, durusTop=0, hataTop=0;
   const tb=$("#dBody"); tb.innerHTML="";
-  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=16; tr.appendChild(c); tb.appendChild(tr); }
+  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=17; tr.appendChild(c); tb.appendChild(tr); }
   const frag=document.createDocumentFragment();
   list.forEach(o=>{
     const c=calc(o), v=n0(o.days[date]);
     const gunlukTeorik=c.R, dur=n0(durOf(o,date));
     if(v){ dayTotal+=v; entered++; if(c.Q) dayHours+=v/c.Q; teorikTop+=gunlukTeorik; if(c.cevrimPerf){ perfTop+=c.cevrimPerf; perfN++; } }
-    durusTop+=dur;
+    durusTop+=dur; hataTop+=n0(hatOf(o,date));
     const tr=el("tr");
     const a=el("td"); const lk=el("button","btn sm"); lk.textContent=o.ie; lk.addEventListener("click",()=>focusOrder(o.ie)); a.appendChild(lk); tr.appendChild(a);
     const p=el("td"); p.appendChild(el("span","strong",o.urun||"—")); p.appendChild(el("span","sub",o.kod||"")); tr.appendChild(p);
@@ -2042,6 +2046,14 @@ function renderDaily(){
     inp.addEventListener("input", ()=>{ setDay(o, date, inp.value); });
     inp.addEventListener("change", ()=>{ renderDaily(); });
     inTd.appendChild(inp); tr.appendChild(inTd);
+    const hTd=el("td","r"), hinp=el("input");
+    hinp.type="text"; hinp.className="mono"; hinp.style.width="86px"; hinp.style.textAlign="right";
+    hinp.value = hatOf(o,date)==null ? "" : String(hatOf(o,date)).replace(".",",");
+    hinp.placeholder="Yok";
+    hinp.readOnly=!canEdit();
+    hinp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" hatalı üretim adedi");
+    hinp.addEventListener("change", ()=>{ setHat(o,date,hinp.value); renderDaily(); });
+    hTd.appendChild(hinp); tr.appendChild(hTd);
     tr.appendChild(td(v&&gunlukTeorik?pctS(v/gunlukTeorik):"—","r mono"));
     tr.appendChild(td(c.cevrimPerf?pctS(c.cevrimPerf):"—","r mono"));
     tr.appendChild(td(n0(o.plan)?pctS(c.pct):"—","r mono"));
@@ -2079,6 +2091,7 @@ function renderDaily(){
   k.appendChild(kpi("Günlük üretim verimi", teorikTop?pctS(dayTotal/teorikTop):"—", "gerçekleşen / teorik"));
   k.appendChild(kpi("Ortalama çevrim performansı", perfN?pctS(perfTop/perfN):"—", "teorik çevrim / gerçekleşen çevrim"));
   k.appendChild(kpi("Toplam duruş", durusTop?fmt1(durusTop)+" saat":"Yok", "bu güne girilen duruşlar"));
+  k.appendChild(kpi("Hatalı üretim", hataTop?fmt(hataTop)+" adet":"Yok", dayTotal?pctS(hataTop/dayTotal)+" · günlük üretime oran":"bu güne girilen hatalılar"));
   k.appendChild(kpi("Toplam çalışma", fmt2(dayHours), "saat (gerçekleşen kapasiteye göre)"));
 }
 function gunAdi(iso){ const w=(parseISO(iso).getUTCDay()+6)%7; return ["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"][w]; }
@@ -2102,15 +2115,36 @@ function setDurBilgi(o,date,alan,deger){
   saveOrder(o);
 }
 function durToplam(o){ let t=0; for(const k in (o.dur||{})) t+=n0(o.dur[k]); return t; }
-/* Aylık ızgaradaki Arıza/Duruş sütununa toplu girilen, güne bağlanmamış kalan saat.
-   Günlük raporda gün gün girilenler bundan düşülür. */
-function durGunsuz(o){ return Math.max(n0(o.durus)-durToplam(o),0); }
+/* Eski kayıtlarda duruş, aylık ızgaraya güne bağlanmadan toplu girilmişti. O kalıntı ilk
+   günlük girişte dondurulur (o.durA) ki yeni giriş eski toplamı silmesin. */
+function durGunsuz(o){ return o.durA==null ? Math.max(n0(o.durus)-durToplam(o),0) : n0(o.durA); }
 function setDur(o,date,text){
   const v=parseNum(text);
+  const artik=durGunsuz(o);
   o.dur=o.dur||{};
   if(v==null||!v) delete o.dur[date]; else o.dur[date]=v;
   if(!o.dur[date] && o.durB) { delete o.durB[date]; if(!Object.keys(o.durB).length) delete o.durB; }
-  if(Object.keys(o.dur).length){ o.durus=durToplam(o); } else delete o.dur;
+  const gunluk=durToplam(o);
+  if(!Object.keys(o.dur).length) delete o.dur;
+  if(artik) o.durA=artik; else delete o.durA;
+  const top=gunluk+artik;
+  if(top) o.durus=r2(top); else delete o.durus;
+  saveOrder(o);
+}
+/* Hatalı üretim de güne bağlı tutulur; iş emrinin toplamı bu girişlerin toplamıdır. */
+function hatOf(o,date){ return o.hat && o.hat[date]!=null ? o.hat[date] : null; }
+function hatToplam(o){ let t=0; for(const k in (o.hat||{})) t+=n0(o.hat[k]); return t; }
+function hatGunsuz(o){ return o.hatA==null ? Math.max(n0(o.hatali)-hatToplam(o),0) : n0(o.hatA); }
+function setHat(o,date,text){
+  const v=parseNum(text);
+  const artik=hatGunsuz(o);
+  o.hat=o.hat||{};
+  if(v==null||!v) delete o.hat[date]; else o.hat[date]=v;
+  const gunluk=hatToplam(o);
+  if(!Object.keys(o.hat).length) delete o.hat;
+  if(artik) o.hatA=artik; else delete o.hatA;
+  const top=gunluk+artik;
+  if(top) o.hatali=r2(top); else delete o.hatali;
   saveOrder(o);
 }
 function dayExp(o,date){ return o.exp && o.exp[date] ? o.exp[date] : ""; }
@@ -3153,7 +3187,7 @@ function buildPrintDaily(){
   const date=$("#dDate").value;
   area.appendChild(el("h1",null,"Günlük Üretim Performans Raporu"));
   area.appendChild(el("p","pmeta","Tarih: "+trDate(date)+" · "+gunAdi(date)+" · "+$("#dCount").textContent));
-  const paylar=[92,150,108,58,58,58,70,70,86,74,66,78,78,64,86,140];
+  const paylar=[92,150,108,58,58,58,70,70,86,74,66,66,78,78,64,86,140];
   const top=paylar.reduce((a,b)=>a+b,0);
   const t=el("table"), cg=el("colgroup"), thead=el("thead"), htr=el("tr"), tb=el("tbody");
   paylar.forEach(w=>{ const c=document.createElement("col"); c.style.width=(w/top*100).toFixed(3)+"%"; cg.appendChild(c); });
@@ -3166,7 +3200,7 @@ function buildPrintDaily(){
     const ntr=el("tr");
     Array.prototype.forEach.call(tr.children,(cell,i)=>{
       const inp=cell.querySelector("input"), sec=cell.querySelector("select");
-      let v = sec ? (sec.value||"") : inp ? (inp.value.trim() || (i===13?"Yok":"")) : cell.textContent.trim();
+      let v = sec ? (sec.value||"") : inp ? (inp.value.trim() || (inp.placeholder==="Yok"?"Yok":"")) : cell.textContent.trim();
       if(i===1){ const st=cell.querySelector(".strong"), sb=cell.querySelector(".sub");
         v=(st?st.textContent:"")+(sb&&sb.textContent?" ("+sb.textContent+")":""); }
       ntr.appendChild(el("td",i>2?"r":null,v));
@@ -3351,12 +3385,12 @@ window.addEventListener("afterprint",()=>{ $("#printArea").innerHTML=""; });
 /* Günlük rapor sekmesinin pano kopyası: ekranda görünen tabloyla aynı, duruş sebebi dâhil. */
 function gunlukTable(sep){
   const date=$("#dDate").value;
-  const out=[["Tarih","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Duruş (saat)","Duruş Sebebi","Duruş Notu"].join(sep)];
+  const out=[["Tarih","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Hatalı (adet)","Duruş (saat)","Duruş Sebebi","Duruş Notu"].join(sep)];
   dailyRows().forEach(o=>{
-    const sa=n0(durOf(o,date)), b=durBilgi(o,date), v=n0(o.days[date]);
-    if(!v && !sa) return;
+    const sa=n0(durOf(o,date)), b=durBilgi(o,date), v=n0(o.days[date]), ha=n0(hatOf(o,date));
+    if(!v && !sa && !ha) return;
     out.push([trDate(date),o.ie||"",o.kod||"",o.urun||"",machineLabel(o.makine),
-      v||"",sa?String(sa).replace(".",","):"",sa?(b.s||"Belirtilmemiş"):"",b.n||""]
+      v||"",ha||"",sa?String(sa).replace(".",","):"",sa?(b.s||"Belirtilmemiş"):"",b.n||""]
       .map(x=>String(x).replace(/[\t\r\n]/g," ")).join(sep));
   });
   return out.join("\n");
@@ -3385,19 +3419,20 @@ function sheetOrders(){
   return rows;
 }
 function sheetDays(){
-  const rows=[["Tarih","Gün","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Vardiya Dökümü","Saat Karşılığı","Duruş (saat)","Duruş Sebebi","Duruş Notu"]];
+  const rows=[["Tarih","Gün","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Vardiya Dökümü","Saat Karşılığı","Hatalı (adet)","Duruş (saat)","Duruş Sebebi","Duruş Notu"]];
   const all=[];
   S.orders.forEach(o=>{ const c=calc(o);
     /* Üretim girilen günler ve yalnız duruş girilen günler birlikte listelenir. */
     const gunler={};
     for(const k in o.days){ if(n0(o.days[k])) gunler[k]=1; }
     for(const k in (o.dur||{})){ if(n0(o.dur[k])) gunler[k]=1; }
+    for(const k in (o.hat||{})){ if(n0(o.hat[k])) gunler[k]=1; }
     for(const k in gunler) all.push([k,o,n0(o.days[k]),c]);
   });
   all.sort((a,b)=> a[0]<b[0]?-1:a[0]>b[0]?1:(a[1].ie||"").localeCompare(b[1].ie||"","tr"));
-  all.forEach(([k,o,v,c])=>{ const sa=n0(durOf(o,k)), b=durBilgi(o,k);
+  all.forEach(([k,o,v,c])=>{ const sa=n0(durOf(o,k)), b=durBilgi(o,k), ha=n0(hatOf(o,k));
     rows.push([xlDate(k),gunAdi(k),o.ie||"",o.kod||"",o.urun||"",machineLabel(o.makine),
-      v||"",dayExp(o,k),c.Q&&v?r2(v/c.Q):"",sa?r2(sa):"",sa?(b.s||"Belirtilmemiş"):"",b.n||""]);
+      v||"",dayExp(o,k),c.Q&&v?r2(v/c.Q):"",ha||"",sa?r2(sa):"",sa?(b.s||"Belirtilmemiş"):"",b.n||""]);
   });
   return rows;
 }
