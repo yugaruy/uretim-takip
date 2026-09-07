@@ -186,7 +186,7 @@ td.calc{background:var(--surface-2);color:var(--ink-2)}
 td.wk{background:var(--accent-soft);color:var(--ink-2)}
 td.num-c{text-align:right}
 td.dev-warn{color:var(--warn)} td.dev-crit{color:var(--crit);font-weight:600}
-tr.kapali td{color:var(--muted)}
+tr.bitti td{color:var(--muted)}
 /* Grafik renkleri: kategorik palet, açık ve koyu yüzey için ayrı adımlanmış. */
 .viz{--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#4a3aa7;--s0:#8697a4}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .viz{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s0:#6b7a86}}
@@ -492,7 +492,6 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
         <option value="devam">Devam eden</option>
         <option value="tamam">Tamamlanan</option>
         <option value="bos">Üretim girilmemiş</option>
-        <option value="kapali">Kapatılan</option>
       </select>
       <span class="month-nav">
         <button class="btn sm" id="mPrev" aria-label="Önceki ay">‹</button>
@@ -502,7 +501,6 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
       </span>
       <span class="spacer"></span>
       <span class="count" id="oCount"></span>
-      <button class="btn sm" id="btnCloseOrder">İş emrini kapat</button>
       <button class="btn sm" id="btnDelRow">Satırı sil</button>
       <button class="btn sm danger" id="btnClear2">Boşalt</button>
       <button class="btn primary" id="btnNew">Yeni iş emri</button>
@@ -1047,7 +1045,7 @@ function saltUyar(){
 }
 function applyReadonly(){
   const on=canEdit();
-  ["#btnNew","#btnDelRow","#btnCloseOrder","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine","#btnNewBakim"]
+  ["#btnNew","#btnDelRow","#btnClear","#btnClear2","#btnSyncProducts","#btnNewProduct","#btnNewMachine","#btnNewBakim"]
     .forEach(id=>{ const b=$(id); if(b) b.hidden=!on; });
   $("#btnEdit").textContent = on&&cloudOn() ? "Düzenlemeyi kapat" : "Düzenlemeyi aç";
   $("#btnEdit").hidden = !cloudOn();
@@ -1126,8 +1124,8 @@ function calc(o){
   const gecenGun = (ilk&&son) ? isGunSayisi(ilk,son) : 0;
   const gercekHiz = gecenGun ? J/gecenGun : 0;
   const gercekGun = gercekHiz ? kalan/gercekHiz : 0;
-  const bitisTeorik = (o.kapali||!kalan||!kalanGun) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(kalanGun)));
-  const bitis = (o.kapali||!kalan) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(gercekGun||hizGun||kalanGun||0)));
+  const bitisTeorik = (!kalan||!kalanGun) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(kalanGun)));
+  const bitis = (!kalan) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(gercekGun||hizGun||kalanGun||0)));
   return {P:P,Q:Q,J:J,T:T,maliyetCevrim:maliyetCevrim,calisVerim:calisVerim,kapaliGoz:kapaliGoz,cevrimPerf:cevrimPerf,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,gercekGun:gercekGun,bitisTeorik:bitisTeorik,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
 }
 function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
@@ -1310,7 +1308,6 @@ function orderInMonth(o,mk){
   if(!mk) return true;
   const st=orderStart(o); if(st && mk<st) return false;      // o ay henüz açılmamıştı
   const en=orderLastMonth(o); if(en && mk<=en) return true;   // o ayda üretim girişi var
-  if(o.kapali) return false;                                  // elle kapatılan iş emri devretmez
   const p=n0(o.plan); return !(p>0 && n0(calc(o).J)>=p);      // planı dolduysa sonraki aylara devretmez
 }
 /* Eski kayıtlarda ay damgası yok: ilk üretim ayından, o da yoksa bu aydan sayılır. */
@@ -1343,10 +1340,10 @@ function filteredOrders(){
     if(q && ara((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")+" "+(o.firma||"")).indexOf(q)<0) return false;
     if(st){
       const c=calc(o);
-      if(st==="bos" && (c.J||o.kapali)) return false;
-      if(st==="kapali" && !o.kapali) return false;
-      if(st==="tamam" && !(o.kapali || (n0(o.plan) && c.J>=n0(o.plan)))) return false;
-      if(st==="devam" && (o.kapali || !(c.J>0 && (!n0(o.plan) || c.J<n0(o.plan))))) return false;
+      const durum=durumAdi(o,c);
+      if(st==="bos" && durum!=="Başlamadı") return false;
+      if(st==="tamam" && durum!=="Tamamlandı") return false;
+      if(st==="devam" && durum!=="Devam ediyor") return false;
     }
     return true;
   });
@@ -1357,6 +1354,7 @@ function computeRows(){
   if(k) rows.sort((a,b)=>{
     let x,y;
     if(k==="ie"||k==="kod"||k==="urun"||k==="makine"){ x=a[k]||""; y=b[k]||""; return String(x).localeCompare(String(y),"tr")*sortDir; }
+    if(k==="kapali"){ const sira=o=>({"Başlamadı":0,"Devam ediyor":1,"Tamamlandı":2})[durumAdi(o)]; return (sira(a)-sira(b))*sortDir; }
     if(k==="plan"||k==="durus"||k==="hatali"||k==="cevrim"||k==="gcevrim"||k==="kgoz"||k==="cgoz"){ x=n0(a[k]); y=n0(b[k]); }
     else { x=n0(calc(a)[k]); y=n0(calc(b)[k]); }
     return (x-y)*sortDir;
@@ -1365,9 +1363,9 @@ function computeRows(){
   if(sel.r>=rows.length) sel.r=Math.max(0,rows.length-1);
   $("#oCount").textContent=fmt(rows.length)+" iş emri";
 }
-/* İş emrinin durumu: süzgeçteki durum mantığının birebir karşılığı, hiçbir satır boş kalmaz. */
+/* İş emrinin durumu üretim adedinden çıkar: planlanan adet dolunca iş emri kendiliğinden
+   kapanır, elle kapatma yoktur. Süzgeç, satır solgunluğu ve çıktılar hep buradan okur. */
 function durumAdi(o,c){
-  if(o.kapali) return "Kapalı";
   const hedef=n0(o.plan), uretim=(c||calc(o)).J;
   if(hedef && uretim>=hedef) return "Tamamlandı";
   if(uretim>0) return "Devam ediyor";
@@ -1459,7 +1457,7 @@ function renderBody(){
     const o=gridRows[r], c=calc(o), tr=el("tr");
     tr.dataset.r=r;
     cols.forEach((col,i)=>{
-      if(o.kapali) tr.classList.add("kapali");
+      if(durumAdi(o,c)==="Tamamlandı") tr.classList.add("bitti");
       const cell=el("td",cellClass(col,o,c),col.rownum?String(r+1):cellText(o,col,c));
       if(col.rownum && r===sel.r) cell.classList.add("on");
       if(col.frozen) cell.style.left=col.left+"px";
@@ -1475,7 +1473,6 @@ function renderBody(){
   Array.prototype.forEach.call($("#gridLetters").children,(th,i)=>th.classList.toggle("on",i===sel.c));
   Array.prototype.forEach.call($("#gridHead").children,(th,i)=>th.classList.toggle("on",i===sel.c));
   const secili=gridRows[sel.r];
-  $("#btnCloseOrder").textContent = secili&&secili.kapali ? "Yeniden aç" : "İş emrini kapat";
   paintCellInfo();
 }
 function spacerRow(h){
@@ -1594,7 +1591,7 @@ function startEdit(seedChar){
   if(!canEdit()){ saltUyar(); return; }
   const o=gridRows[sel.r], col=cols[sel.c];
   if(col&&col.rownum) return;
-  if(col&&col.type==="flag"){ toast("Durum kendiliğinden hesaplanır; kapatmak için “İş emrini kapat” düğmesini kullan"); return; }
+  if(col&&col.type==="flag"){ toast("Durum, planlanan üretim adedi dolunca kendiliğinden değişir"); return; }
   if(!o||!col||col.calc){ if(col&&col.calc) toast("Bu sütun kendiliğinden hesaplanır"); return; }
   const cell=$("#gridBody td.active"); if(!cell) return;
   cell.classList.add("editing"); cell.textContent="";
@@ -1877,11 +1874,6 @@ $("#btnNew").addEventListener("click",()=>{
   sortK=""; sortDir=1; renderOrders();
   const i=gridRows.indexOf(o); if(i>=0){ sel.r=i; sel.c=1; sel.ar=i; sel.ac=1; ensureVisible(); renderBody(); }
   toast("Satır eklendi — stok kodunu girince ürün bilgileri dolar");
-});
-$("#btnCloseOrder").addEventListener("click",()=>{
-  const o=gridRows[sel.r]; if(!o){ toast("Önce bir satır seç"); return; }
-  o.kapali=!o.kapali; saveOrder(o); renderOrders();
-  toast(o.kapali?"İş emri kapatıldı":"İş emri yeniden açıldı");
 });
 $("#btnDelRow").addEventListener("click",()=>{
   const o=gridRows[sel.r]; if(!o){ toast("Önce bir satır seç"); return; }
@@ -2398,7 +2390,7 @@ function planIlkSon(o){
 /* Bir iş emrinin makineyi tuttuğu gün aralığı. Üretim girilmiş olması şart değil:
    iş emri makineye atandığı andan planlanan adet bitene kadar makineyi tutar. */
 function planAralik(o,kuyrukBas){
-  const bugun=todayISO(), gs=planIlkSon(o), bitti=o.kapali || (n0(o.plan)>0 && calc(o).kalan<=0);
+  const bugun=todayISO(), gs=planIlkSon(o), bitti=(n0(o.plan)>0 && calc(o).kalan<=0);
   const bas = gs.ilk || kuyrukBas;
   let bit;
   if(bitti) bit = gs.son || bas;
@@ -2421,7 +2413,7 @@ function planYerlesim(kod){
     if(o.makine!==kod) return;
     const gs=planIlkSon(o);
     if(gs.ilk) basli.push({o:o,ilk:gs.ilk});
-    else if(!o.kapali) yeni.push({o:o});
+    else yeni.push({o:o});
   });
   basli.sort((a,b)=>a.ilk.localeCompare(b.ilk));
   yeni.sort((a,b)=>String(a.o.ie||"").localeCompare(String(b.o.ie||""),"tr"));
