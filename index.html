@@ -2536,15 +2536,27 @@ function planAciklama(r){
   if(!seq.length) return "MAKİNEDE AÇIK İŞ EMRİ YOK.";
   const sonGun=o=>{ let i=-1; r.cells.forEach((c,k)=>{ if(c.tip==="is"&&c.o===o) i=k; }); return i; };
   const ilk=seq[0], t=planKalanGun(ilk);
-  let s = planAd(ilk)+" ÜRETİMİ "+(t ? t+" GÜN DAHA SÜRER" : "SÜRÜYOR");
+  /* Kalan gün üç ayrı sebeple sıfır olabilir: iş bitmiştir, hedef adet girilmemiştir ya da
+     çevrim/göz eksik olduğu için hız hesaplanamamıştır. Hepsine aynı cümleyi yazmak yanlış. */
+  const hedef=n0(ilk.plan), bitti = hedef>0 && calc(ilk).kalan<=0;
+  const gun = ()=>PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr");
+  /* İşin haftadaki son hücresi kaçıncı günse ondan anlaşılır: toplam gün sayısına ulaşmadıysa
+     iş bu hafta bitmez, sonraki haftaya sarkar. Aksi hâlde haftanın son günü bitiş günü sanılır. */
+  let sonHucre=null; r.cells.forEach(c=>{ if(c.tip==="is"&&c.o===ilk) sonHucre=c; });
+  const sarkiyor = !bitti && !!(sonHucre && sonHucre.top && sonHucre.gun < sonHucre.top);
+  let s = planAd(ilk)+" ÜRETİMİ "+(bitti ? "TAMAMLANDI" : t ? t+" GÜN DAHA SÜRER" : "SÜRÜYOR");
   if(seq.length===1){
-    if(r.cells.every(c=>c.tip==="is")) s+=", HAFTA BOYU DEVAM EDİLECEKTİR.";
-    else s+=", "+PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR; SONRASI İÇİN İŞ EMRİ BEKLENİYOR.";
+    if(bitti) s+=", "+gun()+" GÜNÜ SON ÜRETİM YAPILDI; SONRASI İÇİN İŞ EMRİ BEKLENİYOR.";
+    else if(sarkiyor) s+=", ÖNÜMÜZDEKİ HAFTA DEVAM EDECEKTİR.";
+    else if(r.cells.every(c=>c.tip==="is")) s+=", HAFTA BOYU DEVAM EDİLECEKTİR.";
+    else s+=", "+gun()+" GÜNÜ TAMAMLANIR; SONRASI İÇİN İŞ EMRİ BEKLENİYOR.";
   } else {
-    s+=", "+PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr")+" GÜNÜ TAMAMLANIR; ";
+    s+=", "+(sarkiyor ? "ÖNÜMÜZDEKİ HAFTA DEVAM EDECEKTİR; "
+                      : gun()+" GÜNÜ "+(bitti?"SON ÜRETİM YAPILDI":"TAMAMLANIR")+"; ");
     s+=seq.slice(1).map(o=>{ const ts=planToplamGun(o); return "ARDINDAN "+planAd(o)+" ÜRETİMİNE BAŞLANACAKTIR"+(ts?" ("+ts+" GÜN)":""); }).join("; ")+".";
   }
-  if(!t) s+=" PLANLANAN ÜRETİM GİRİLMEDİĞİ İÇİN SÜRE HESAPLANAMADI.";
+  if(!t && !bitti) s+= hedef ? " ÇEVRİM VE GÖZ BİLGİSİ EKSİK OLDUĞU İÇİN SÜRE HESAPLANAMADI."
+                             : " HEDEF ADET GİRİLMEDİĞİ İÇİN SÜRE HESAPLANAMADI.";
   return s;
 }
 function planNot(r){ return (r.m&&r.m.notlar&&r.m.notlar[planWS])||""; }
