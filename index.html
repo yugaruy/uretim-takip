@@ -315,11 +315,13 @@ th.pbugun-bas{background:var(--accent);color:var(--accent-ink)}
 td.pcell.pbugun{outline:2px solid var(--ink);outline-offset:-2px}
 td.pcell.pgecmis{opacity:.62}
 td.pnot{text-align:left}
-td.pnot input{width:100%;border:1px solid transparent;background:transparent;border-radius:5px;padding:4px 6px;
-  font-size:11.5px;font-weight:600;text-transform:uppercase}
-td.pnot input:hover:not(:read-only){border-color:var(--line)}
-td.pnot input:focus{border-color:var(--accent);background:var(--surface);text-transform:none}
-td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
+/* Açıklama tek satıra sığmıyordu: metin alanı sarıyor ve içeriğine göre boyunu alıyor. */
+td.pnot textarea{width:100%;border:1px solid transparent;background:transparent;border-radius:5px;padding:4px 6px;
+  font-size:11.5px;font-weight:600;text-transform:uppercase;font-family:inherit;line-height:1.35;
+  resize:none;overflow:hidden;display:block;color:inherit}
+td.pnot textarea:hover:not(:read-only){border-color:var(--line)}
+td.pnot textarea:focus{border-color:var(--accent);background:var(--surface);text-transform:none;outline:none}
+td.pnot textarea::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
 .plan-leg{display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-2)}
 .plan-leg span{display:inline-flex;align-items:center;gap:6px}
 .plan-leg i{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.12)}
@@ -341,7 +343,7 @@ td.pnot input::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
   .tools[open] .tools-pop .btn{text-align:left}
   main{padding:12px}
   /* iOS'ta alana dokununca sayfanın büyümemesi için 16 punto. */
-  input[type=text],input[type=search],input[type=number],input[type=date],select,td.pnot input{font-size:16px}
+  input[type=text],input[type=search],input[type=number],input[type=date],select,td.pnot textarea{font-size:16px}
   input[type=search]{min-width:0;width:100%}
   .toolbar{gap:7px}
   .toolbar>input[type=search]{flex:1 1 100%}
@@ -2487,6 +2489,16 @@ function planHucreTam(c){
   const m=planHucreMetin(c);
   return (c.tip==="is"&&c.top) ? m+" ("+c.gun+"/"+c.top+". gün)" : m;
 }
+/* Metin alanı içeriğine göre boy alır. Not boşken ölçü yer tutucu metne göre yapılır,
+   çünkü ekranda görünen odur. */
+function notBoyla(t){
+  const bosken=!t.value && t.placeholder;
+  if(bosken) t.value=t.placeholder;
+  t.style.height="auto";
+  if(t.scrollHeight) t.style.height=t.scrollHeight+"px";   /* gizliyken ölçüm 0 gelir, boyu bozma */
+  if(bosken) t.value="";
+}
+const boyKuyrugu=[];
 function renderPlan(){
   const rows=planRows(planWS);
   $("#plDate").value=planWS;
@@ -2536,13 +2548,15 @@ function renderPlan(){
       tr.appendChild(cell);
     });
     const not=el("td","pnot"); not.dataset.l="Açıklama";
-    const i=el("input"); i.value=planNot(r); i.placeholder=planAciklama(r);
+    const i=el("textarea"); i.rows=1; i.value=planNot(r); i.placeholder=planAciklama(r);
     i.readOnly=!canEdit()||!r.m;
-    i.addEventListener("input",()=>planNotYaz(r,i.value));
+    i.addEventListener("input",()=>{ planNotYaz(r,i.value); notBoyla(i); });
     not.appendChild(i); tr.appendChild(not);
+    boyKuyrugu.push(i);
     frag.appendChild(tr);
   });
   tb.appendChild(frag);
+  boyKuyrugu.forEach(notBoyla); boyKuyrugu.length=0;
 }
 $("#plPrev").addEventListener("click",()=>{ planWS=addDays(planWS,-7); renderPlan(); });
 $("#plNext").addEventListener("click",()=>{ planWS=addDays(planWS,7); renderPlan(); });
