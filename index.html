@@ -1181,7 +1181,6 @@ const BASE_COLS=[
   {k:"ie", g:"kimlik",   t:"İş Emri",            w:112, type:"text", frozen:true},
   {k:"kod", g:"kimlik",  t:"Stok Kodu",          w:106, type:"code", frozen:true},
   {k:"urun", g:"kimlik", t:"Ürün",               w:224, type:"product", frozen:true},
-  {k:"firma", g:"kimlik", t:"Firma",                w:150, type:"text"},
   {k:"kapali", g:"kimlik",  t:"Durum",               w:96, type:"flag"},
   {k:"cevrim", g:"cevrim",  t:"Çevrim Süresi",       w:84, type:"num", dec:2},
   {k:"gcevrim", g:"cevrim", t:"Gerçekleşen Çevrim",  w:92, type:"num", dec:2},
@@ -1337,7 +1336,7 @@ function filteredOrders(){
   return S.orders.filter(o=>{
     if(!orderInMonth(o,monthKey)) return false;
     if(m && o.makine!==m) return false;
-    if(q && ara((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")+" "+(o.firma||"")).indexOf(q)<0) return false;
+    if(q && ara((o.ie||"")+" "+(o.kod||"")+" "+(o.urun||"")).indexOf(q)<0) return false;
     if(st){
       const c=calc(o);
       const durum=durumAdi(o,c);
@@ -3086,7 +3085,7 @@ async function toClipboard(text,okMsg){
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
 /* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
-const PRINT_LABEL={firma:"Firma",maliyetCevrim:"Maliyet çevrimi",calisVerim:"Çalışma verimi",kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",gercekGun:"Gerçek gün",bitisTeorik:"Olması gereken",bitis:"Olacak olan",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+const PRINT_LABEL={maliyetCevrim:"Maliyet çevrimi",calisVerim:"Çalışma verimi",kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",gercekGun:"Gerçek gün",bitisTeorik:"Olması gereken",bitis:"Olacak olan",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
   plan:"Plan. Üretim",J:"Gerç. Üretim",pct:"Gerç. %",K:"Plan. Saat",L:"Gerç. Saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Teorik/Saat",Q:"Gerç./Saat",vardiya:"Vardiya (8 sa)",
   R:"Teorik/24 sa",S:"Gerç./24 sa",hatali:"Hatalı",V:"Fire (kg)"};
