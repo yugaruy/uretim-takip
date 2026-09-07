@@ -3342,8 +3342,22 @@ $("#btnPrint").addEventListener("click",()=>{
   if(ciktiHazirla()) window.print();
 });
 window.addEventListener("afterprint",()=>{ $("#printArea").innerHTML=""; });
+/* Günlük rapor sekmesinin pano kopyası: ekranda görünen tabloyla aynı, duruş sebebi dâhil. */
+function gunlukTable(sep){
+  const date=$("#dDate").value;
+  const out=[["Tarih","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Duruş (saat)","Duruş Sebebi","Duruş Notu"].join(sep)];
+  dailyRows().forEach(o=>{
+    const sa=n0(durOf(o,date)), b=durBilgi(o,date), v=n0(o.days[date]);
+    if(!v && !sa) return;
+    out.push([trDate(date),o.ie||"",o.kod||"",o.urun||"",machineLabel(o.makine),
+      v||"",sa?String(sa).replace(".",","):"",sa?(b.s||"Belirtilmemiş"):"",b.n||""]
+      .map(x=>String(x).replace(/[\t\r\n]/g," ")).join(sep));
+  });
+  return out.join("\n");
+}
 $("#btnCopyExcel").addEventListener("click",()=>{
   if(view==="plan"){ toClipboard(planTable("\t"), "Haftalık plan panoya kopyalandı, Excel'e yapıştır"); return; }
+  if(view==="daily"){ toClipboard(gunlukTable("\t"), "Günlük rapor panoya kopyalandı, Excel'e yapıştır"); return; }
   toClipboard(table("\t"), fmt(S.orders.length)+" iş emri panoya kopyalandı, Excel'e yapıştır");
 });
 
@@ -3365,14 +3379,52 @@ function sheetOrders(){
   return rows;
 }
 function sheetDays(){
-  const rows=[["Tarih","Gün","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Vardiya Dökümü","Saat Karşılığı"]];
+  const rows=[["Tarih","Gün","İş Emri","Stok Kodu","Ürün","Makine","Üretilen Adet","Vardiya Dökümü","Saat Karşılığı","Duruş (saat)","Duruş Sebebi","Duruş Notu"]];
   const all=[];
   S.orders.forEach(o=>{ const c=calc(o);
-    for(const k in o.days){ const v=n0(o.days[k]); if(v) all.push([k,o,v,c]); }
+    /* Üretim girilen günler ve yalnız duruş girilen günler birlikte listelenir. */
+    const gunler={};
+    for(const k in o.days){ if(n0(o.days[k])) gunler[k]=1; }
+    for(const k in (o.dur||{})){ if(n0(o.dur[k])) gunler[k]=1; }
+    for(const k in gunler) all.push([k,o,n0(o.days[k]),c]);
   });
   all.sort((a,b)=> a[0]<b[0]?-1:a[0]>b[0]?1:(a[1].ie||"").localeCompare(b[1].ie||"","tr"));
-  all.forEach(([k,o,v,c])=>rows.push([xlDate(k),gunAdi(k),o.ie||"",o.kod||"",o.urun||"",machineLabel(o.makine),
-    v,dayExp(o,k),c.Q?r2(v/c.Q):""]));
+  all.forEach(([k,o,v,c])=>{ const sa=n0(durOf(o,k)), b=durBilgi(o,k);
+    rows.push([xlDate(k),gunAdi(k),o.ie||"",o.kod||"",o.urun||"",machineLabel(o.makine),
+      v||"",dayExp(o,k),c.Q&&v?r2(v/c.Q):"",sa?r2(sa):"",sa?(b.s||"Belirtilmemiş"):"",b.n||""]);
+  });
+  return rows;
+}
+/* Duruş dökümü: her satır bir günün bir iş emrindeki duruşu. Sebep girilmemişse
+   boş bırakılmaz ki süzgeçte ve özet tablolarda satır kaybolmasın. */
+function sheetDurus(){
+  const rows=[["Tarih","Gün","Makine","İş Emri","Stok Kodu","Ürün","Duruş (saat)","Sebep","Not"]];
+  const all=[];
+  S.orders.forEach(o=>{
+    for(const k in (o.dur||{})){ const sa=n0(o.dur[k]); if(sa) all.push([k,o,sa]); }
+  });
+  all.sort((a,b)=> a[0]<b[0]?-1:a[0]>b[0]?1:(a[1].ie||"").localeCompare(b[1].ie||"","tr"));
+  all.forEach(([k,o,sa])=>{ const b=durBilgi(o,k);
+    rows.push([xlDate(k),gunAdi(k),machineLabel(o.makine),o.ie||"",o.kod||"",o.urun||"",
+      r2(sa),b.s||"Belirtilmemiş",b.n||""]);
+  });
+  return rows;
+}
+/* Duruş sebeplerinin özeti: hangi sebep kaç kez ve kaç saat. */
+function sheetDurusOzet(){
+  const rows=[["Sebep","Kayıt","Duruş (saat)","Pay %"]];
+  const sebep={};
+  let top=0;
+  S.orders.forEach(o=>{
+    for(const k in (o.dur||{})){
+      const sa=n0(o.dur[k]); if(!sa) continue;
+      const ad=durBilgi(o,k).s||"Belirtilmemiş";
+      if(!sebep[ad]) sebep[ad]={saat:0,kez:0};
+      sebep[ad].saat+=sa; sebep[ad].kez++; top+=sa;
+    }
+  });
+  Object.keys(sebep).sort((a,b)=>sebep[b].saat-sebep[a].saat)
+    .forEach(k=>rows.push([k,sebep[k].kez,r2(sebep[k].saat),top?r2(sebep[k].saat/top*100):0]));
   return rows;
 }
 function sheetProducts(){
@@ -3490,6 +3542,8 @@ $("#btnXlsx").addEventListener("click",()=>{
     addSheet(wb,"Planlama",sheetPlanlama());
     addSheet(wb,"Bakım",sheetBakim(),[0]);
     addSheet(wb,"Günlük Üretim",sheetDays(),[0]);
+    addSheet(wb,"Duruşlar",sheetDurus(),[0]);
+    addSheet(wb,"Duruş Özeti",sheetDurusOzet());
     addSheet(wb,"Ürün Listesi",sheetProducts());
     addSheet(wb,"Makineler",sheetMachines());
     const t=parseISO(todayISO());
