@@ -2495,7 +2495,8 @@ function notBoyla(t){
   const bosken=!t.value && t.placeholder;
   if(bosken) t.value=t.placeholder;
   t.style.height="auto";
-  if(t.scrollHeight) t.style.height=t.scrollHeight+"px";   /* gizliyken ölçüm 0 gelir, boyu bozma */
+  /* scrollHeight kenarlığı saymaz; border-box kutuda son satır 2px kırpılıyordu. */
+  if(t.scrollHeight) t.style.height=(t.scrollHeight+t.offsetHeight-t.clientHeight)+"px";
   if(bosken) t.value="";
 }
 const boyKuyrugu=[];
