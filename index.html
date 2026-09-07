@@ -181,7 +181,6 @@ table.grid th.frz,table.grid td.frz{position:sticky;z-index:2}
 table.grid thead th.frz{z-index:5}
 table.grid th.frz::after,table.grid td.frz::after{content:"";position:absolute;top:0;right:-1px;bottom:0;width:1px;background:var(--line)}
 table.grid th.last-frz::after,table.grid td.last-frz::after{box-shadow:3px 0 6px -2px rgba(16,21,25,.22)}
-@media(max-width:1000px){table.grid th.hide-frz,table.grid td.hide-frz{position:static}}
 td.calc{background:var(--surface-2);color:var(--ink-2)}
 td.wk{background:var(--accent-soft);color:var(--ink-2)}
 td.num-c{text-align:right}
@@ -1316,8 +1315,17 @@ function shiftMonth(mk,k){
   while(m<1){ m+=12; y--; } while(m>12){ m-=12; y++; }
   return y+"-"+String(m).padStart(2,"0");
 }
+/* Dar ekranda yana kaydırırken iş emri ile ürün sabit kalır; sıra no ve stok kodu
+   sabitlikten çıkar, yoksa sabit alan ekranın tamamını yer. Ürün de o ekrana göre daralır. */
+const GRID_DAR=window.matchMedia("(max-width:1000px)");
 function buildCols(){
-  cols=BASE_COLS.slice();
+  const dar=GRID_DAR.matches;
+  cols=BASE_COLS.map(c=>{
+    const k=Object.assign({},c);
+    if(dar && k.frozen && (k.rownum || k.k==="kod")) k.frozen=false;
+    if(dar && k.k==="urun") k.w=150;
+    return k;
+  });
   daysOfMonth(monthKey).forEach(iso=>{
     const w=(parseISO(iso).getUTCDay()+6)%7, d=parseISO(iso).getUTCDate();
     if(w===6) cols.push({week:weekStart(iso), t:"Hafta saati", w:80, calc:true, weekly:true, dec:2});
@@ -1392,7 +1400,6 @@ function cellClass(col,o,c){
   if(col.rownum) cl.push("rownum");
   if(col.frozen) cl.push("frz");
   if(col.lastFrz) cl.push("last-frz");
-  if(col.frozen && col.k!=="ie") cl.push("hide-frz");
   if(col.weekly) cl.push("wk","num-c");
   else if(col.calc) cl.push("calc");
   if(col.type==="num"||col.type==="day"||col.calc) cl.push("num-c");
@@ -1404,7 +1411,7 @@ function cellClass(col,o,c){
   return cl.join(" ");
 }
 function renderHead(){
-  const sig=monthKey+"|"+sortK+"|"+sortDir;
+  const sig=monthKey+"|"+sortK+"|"+sortDir+"|"+(GRID_DAR.matches?"dar":"genis");
   const cg=$("#gridCols"), hr=$("#gridHead"), lr=$("#gridLetters");
   if(headBuilt!==sig){
     headBuilt=sig;
@@ -1415,7 +1422,7 @@ function renderHead(){
       if(col.frozen) lt.style.left=col.left+"px";
       lr.appendChild(lt);
       const th=el("th",null,col.t);
-      th.className=(col.frozen?"frz ":"")+(col.lastFrz?"last-frz ":"")+(col.frozen&&col.k!=="ie"?"hide-frz ":"")+(col.g?"g-"+col.g+" ":"")+((col.type==="num"||col.type==="day"||col.calc)?"num-c":"");
+      th.className=(col.frozen?"frz ":"")+(col.lastFrz?"last-frz ":"")+(col.g?"g-"+col.g+" ":"")+((col.type==="num"||col.type==="day"||col.calc)?"num-c":"");
       if(col.frozen) th.style.left=col.left+"px";
       const sk=col.rownum ? "" : (col.k||col.c);
       if(sk && !col.weekly && col.type!=="day"){
@@ -3600,6 +3607,8 @@ $("#btnTheme").addEventListener("click",()=>{
 const _darMq = window.matchMedia("(max-width:860px)");
 function toolsMode(){ $("#toolsMenu").open = !_darMq.matches; }
 if(_darMq.addEventListener) _darMq.addEventListener("change",toolsMode); else _darMq.addListener(toolsMode);
+const gridYenile=()=>{ headBuilt=""; if(view==="orders") renderOrders(); };
+if(GRID_DAR.addEventListener) GRID_DAR.addEventListener("change",gridYenile); else GRID_DAR.addListener(gridYenile);
 toolsMode();
 $("#toolsMenu").querySelectorAll(".btn").forEach(b=>b.addEventListener("click",()=>{ if(_darMq.matches) $("#toolsMenu").open=false; }));
 document.addEventListener("click",e=>{
