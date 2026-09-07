@@ -2102,6 +2102,9 @@ function setDurBilgi(o,date,alan,deger){
   saveOrder(o);
 }
 function durToplam(o){ let t=0; for(const k in (o.dur||{})) t+=n0(o.dur[k]); return t; }
+/* Aylık ızgaradaki Arıza/Duruş sütununa toplu girilen, güne bağlanmamış kalan saat.
+   Günlük raporda gün gün girilenler bundan düşülür. */
+function durGunsuz(o){ return Math.max(n0(o.durus)-durToplam(o),0); }
 function setDur(o,date,text){
   const v=parseNum(text);
   o.dur=o.dur||{};
@@ -2862,6 +2865,9 @@ function raporVeri(yil){
       if(!sebep[ad]) sebep[ad]={saat:0,kez:0};
       sebep[ad].saat+=sa; sebep[ad].kez++;
     }
+    const durKalan=durGunsuz(o)*pay;
+    if(durKalan){ if(!sebep["Belirtilmemiş"]) sebep["Belirtilmemiş"]={saat:0,kez:0};
+      sebep["Belirtilmemiş"].saat+=durKalan; sebep["Belirtilmemiş"].kez++; }
     emirler.push({o:o,c:c,adet:yilAdet,gun:gun,saat:oSaat,planSaat:oPlanSaat,durus:oDurus});
     plan+=n0(o.plan)*pay; uretim+=yilAdet-oHatali; hatali+=oHatali;
     saat+=oSaat; planSaat+=oPlanSaat; fazla+=c.N*pay; durus+=oDurus; fire+=c.V*pay;
@@ -3408,6 +3414,10 @@ function sheetDurus(){
     rows.push([xlDate(k),gunAdi(k),machineLabel(o.makine),o.ie||"",o.kod||"",o.urun||"",
       r2(sa),b.s||"Belirtilmemiş",b.n||""]);
   });
+  S.orders.forEach(o=>{ const kalan=durGunsuz(o); if(!kalan) return;
+    rows.push(["","Gün girilmemiş",machineLabel(o.makine),o.ie||"",o.kod||"",o.urun||"",
+      r2(kalan),"Belirtilmemiş","Aylık ızgaraya toplu girilmiş"]);
+  });
   return rows;
 }
 /* Duruş sebeplerinin özeti: hangi sebep kaç kez ve kaç saat. */
@@ -3422,6 +3432,9 @@ function sheetDurusOzet(){
       if(!sebep[ad]) sebep[ad]={saat:0,kez:0};
       sebep[ad].saat+=sa; sebep[ad].kez++; top+=sa;
     }
+    const kalan=durGunsuz(o);
+    if(kalan){ if(!sebep["Belirtilmemiş"]) sebep["Belirtilmemiş"]={saat:0,kez:0};
+      sebep["Belirtilmemiş"].saat+=kalan; sebep["Belirtilmemiş"].kez++; top+=kalan; }
   });
   Object.keys(sebep).sort((a,b)=>sebep[b].saat-sebep[a].saat)
     .forEach(k=>rows.push([k,sebep[k].kez,r2(sebep[k].saat),top?r2(sebep[k].saat/top*100):0]));
