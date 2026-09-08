@@ -314,6 +314,8 @@ td.pcell small{display:block;font-size:9.5px;font-weight:600;opacity:.72;letter-
 th.pbugun-bas{background:var(--accent);color:var(--accent-ink)}
 td.pcell.pbugun{outline:2px solid var(--ink);outline-offset:-2px}
 td.pcell.pgecmis{opacity:.62}
+/* Yeni açılan iş emri satırı listede kaybolmasın: kısa süre vurgulanır. */
+tr.yeni td{background:var(--accent-soft);transition:background .8s}
 td.pnot{text-align:left}
 /* Açıklama tek satıra sığmıyordu: metin alanı sarıyor ve içeriğine göre boyunu alıyor. */
 td.pnot textarea{width:100%;border:1px solid transparent;background:transparent;border-radius:5px;padding:4px 6px;
@@ -1931,9 +1933,17 @@ $("#dNewOrder").addEventListener("click",()=>{
         if(pr.goz!=null){ o.kgoz=pr.goz; o.cgoz=pr.goz; } }
       S.orders.push(o); saveOrder(o);
       closePanel();
-      $("#dSearch").value=ie; $("#dMachine").value="";
       renderDaily();
-      const satir=$("#dBody").querySelector("tr"); if(satir){ const g=satir.querySelector("input"); if(g) g.focus(); }
+      /* Yeni satır süzgeç yüzünden görünmüyorsa süzgeci temizle; görünüyorsa listeye dokunma. */
+      const bul=()=>Array.prototype.find.call($("#dBody").children,tr=>tr.textContent.indexOf(ie)===0);
+      if(!bul()){ $("#dSearch").value=""; $("#dMachine").value=""; renderDaily(); }
+      const satir=bul();
+      if(satir){
+        const g=satir.querySelector("input");
+        if(g){ g.focus(); try{ satir.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }
+        satir.classList.add("yeni");
+        setTimeout(()=>satir.classList.remove("yeni"),2500);
+      }
       toast("İş emri açıldı — üretim adedini bu satıra gir");
     });
     cl.addEventListener("click",closePanel);
@@ -2069,6 +2079,8 @@ function dailyRows(){
     if(o.days[date]!=null) return true;
     /* O güne yalnız duruş ya da hatalı girilmiş iş emri de listede kalsın. */
     if(durOf(o,date)!=null || hatOf(o,date)!=null) return true;
+    /* Hiç üretim girilmemiş iş emri: girişi bekleyen iş odur, listede görünmeli. */
+    if(!Object.keys(o.days).length) return true;
     for(const k in o.days){ if(k>=from && k<=to && n0(o.days[k])) return true; }
     return false;
   });
