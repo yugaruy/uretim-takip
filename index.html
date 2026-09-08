@@ -1939,7 +1939,7 @@ $("#dNewOrder").addEventListener("click",()=>{
       if(!bul()){ $("#dSearch").value=""; $("#dMachine").value=""; renderDaily(); }
       const satir=bul();
       if(satir){
-        const g=satir.querySelector("input");
+        const g=satir.querySelector('input[data-rol="adet"]');
         if(g){ g.focus(); try{ satir.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }
         satir.classList.add("yeni");
         setTimeout(()=>satir.classList.remove("yeni"),2500);
@@ -2126,6 +2126,7 @@ function renderDaily(){
     const inTd=el("td","r");
     const inp=el("input"); inp.type="text"; inp.className="mono"; inp.style.width="130px"; inp.style.textAlign="right";
     inp.value = dayExp(o,date) || (o.days[date]!=null ? o.days[date] : "");
+    inp.dataset.rol="adet";
     inp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" üretim adedi; vardiyaları artı ile toplayabilirsin");
     inp.title="Vardiyaları artı ile yazabilirsin: 12000+13500+11000";
     inp.readOnly=!canEdit();
