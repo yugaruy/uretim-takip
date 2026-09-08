@@ -2094,7 +2094,22 @@ function renderDaily(){
     tr.appendChild(td(c.kapaliGoz?fmt(c.kapaliGoz):"—","r mono"));
     tr.appendChild(td(o.cgoz==null?"—":fmt(o.cgoz),"r mono"));
     tr.appendChild(td(o.cevrim==null?"—":fmt2(o.cevrim),"r mono"));
-    tr.appendChild(td(o.gcevrim==null?"—":fmt2(o.gcevrim),"r mono"));
+    /* Gerçek çevrim ölçülen bir değer: buradan denenebilsin, çevrim performansı ve
+       saatlik üretim anında yeniden hesaplansın. İş emrinin tamamı için geçerlidir. */
+    const gcTd=el("td","r"), gcinp=el("input");
+    gcinp.type="text"; gcinp.className="mono"; gcinp.style.width="86px"; gcinp.style.textAlign="right";
+    gcinp.value = o.gcevrim==null ? "" : String(o.gcevrim).replace(".",",");
+    gcinp.placeholder = o.cevrim==null ? "—" : fmt2(o.cevrim);
+    gcinp.readOnly=!canEdit();
+    gcinp.title="İş emrinin tamamı için geçerli ölçülen çevrim süresi";
+    gcinp.setAttribute("aria-label", o.ie+" — gerçekleşen çevrim süresi (saniye)");
+    gcinp.addEventListener("change", ()=>{
+      if(!canEdit()) return;
+      const v=parseNum(gcinp.value);
+      if(v==null||!v) delete o.gcevrim; else o.gcevrim=v;
+      saveOrder(o); renderDaily();
+    });
+    gcTd.appendChild(gcinp); tr.appendChild(gcTd);
     tr.appendChild(td(gunlukTeorik?fmt(Math.round(gunlukTeorik)):"—","r mono"));
     const inTd=el("td","r");
     const inp=el("input"); inp.type="text"; inp.className="mono"; inp.style.width="130px"; inp.style.textAlign="right";
