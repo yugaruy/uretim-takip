@@ -2081,6 +2081,10 @@ function dailyRows(){
     if(m && o.makine!==m) return false;
     if(q && ara(o.ie+" "+o.kod+" "+o.urun).indexOf(q)<0) return false;
     if(all||q) return true;
+    /* Tamamlanan iş emri günlük listede yer tutmaz; yalnız o güne kaydı varsa görünür ki
+       geçmiş giriş gizlenmesin. Hepsini görmek için "Tüm iş emirlerini göster". */
+    if(durumAdi(o)==="Tamamlandı")
+      return o.days[date]!=null || durOf(o,date)!=null || hatOf(o,date)!=null;
     if(o.days[date]!=null) return true;
     /* O güne yalnız duruş ya da hatalı girilmiş iş emri de listede kalsın. */
     if(durOf(o,date)!=null || hatOf(o,date)!=null) return true;
@@ -2104,7 +2108,9 @@ function renderDaily(){
     if(v){ dayTotal+=v; entered++; if(c.Q) dayHours+=v/c.Q; teorikTop+=gunlukTeorik; if(c.cevrimPerf){ perfTop+=c.cevrimPerf; perfN++; } }
     durusTop+=dur; hataTop+=n0(hatOf(o,date));
     const tr=el("tr");
-    const a=el("td"); const lk=el("button","btn sm"); lk.textContent=o.ie; lk.addEventListener("click",()=>focusOrder(o.ie)); a.appendChild(lk); tr.appendChild(a);
+    const a=el("td"); const lk=el("button","btn sm"); lk.textContent=o.ie; lk.addEventListener("click",()=>focusOrder(o.ie)); a.appendChild(lk);
+    if(durumAdi(o,c)==="Tamamlandı"){ tr.classList.add("bitti"); a.appendChild(el("span","rozet","Tamamlandı")); }
+    tr.appendChild(a);
     const p=el("td"); p.appendChild(el("span","strong",o.urun||"—")); p.appendChild(el("span","sub",o.kod||"")); tr.appendChild(p);
     tr.appendChild(td(machineLabel(o.makine)));
     tr.appendChild(td(o.kgoz==null?"—":fmt(o.kgoz),"r mono"));
