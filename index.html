@@ -1880,7 +1880,9 @@ document.addEventListener("paste",e=>{
   if(!gridFocused()) return;
   e.preventDefault(); pasteMatrix(e.clipboardData.getData("text/plain"));
 });
-["#oSearch","#oMachine","#oStatus"].forEach(s=>$(s).addEventListener("input",()=>{ sel.r=0; sel.ar=0; renderOrders(); }));
+/* Açılır listeler bazı tarayıcılarda yalnız "change" yollar: ikisi de dinlenir. */
+["#oSearch","#oMachine","#oStatus"].forEach(s=>["input","change"].forEach(olay=>
+  $(s).addEventListener(olay,()=>{ sel.r=0; sel.ar=0; renderOrders(); })));
 $("#mSel").addEventListener("change",()=>{ monthAuto=false; monthKey=$("#mSel").value; headBuilt=""; renderOrders(); });
 $("#mPrev").addEventListener("click",()=>{ monthAuto=false; monthKey=shiftMonth(monthKey,-1); headBuilt=""; renderOrders(); });
 $("#mNext").addEventListener("click",()=>{ monthAuto=false; monthKey=shiftMonth(monthKey,1); headBuilt=""; renderOrders(); });
@@ -2321,7 +2323,7 @@ function setDay(o,date,text){
 $("#dPrev").addEventListener("click",()=>{ $("#dDate").value=addDays($("#dDate").value,-1); renderDaily(); });
 $("#dNext").addEventListener("click",()=>{ $("#dDate").value=addDays($("#dDate").value,1); renderDaily(); });
 $("#dToday").addEventListener("click",()=>{ $("#dDate").value=todayISO(); renderDaily(); });
-["#dDate","#dMachine","#dSearch","#dAll"].forEach(s=>$(s).addEventListener("input",renderDaily));
+["#dDate","#dMachine","#dSearch","#dAll"].forEach(s=>["input","change"].forEach(olay=>$(s).addEventListener(olay,renderDaily)));
 
 /* ---------- SUMMARY ---------- */
 function fullRange(){ return {from:firstDay()||todayISO(), to:lastDataDay()}; }
