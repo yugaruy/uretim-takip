@@ -609,7 +609,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
       <button class="btn primary" id="btnNewBakim">Yeni kayıt</button>
     </div>
     <div class="panel"><div class="scroll"><table>
-      <thead><tr><th>Tarih</th><th>Makine / Ekipman</th><th>Tür</th><th>Sebep</th><th>Yapılan İşlem</th>
+      <thead><tr><th>Tarih</th><th>Makine / Ekipman</th><th>Ürün / İş Emri</th><th>Tür</th><th>Sebep</th><th>Yapılan İşlem</th>
         <th class="r">Süre (saat)</th><th class="r">Maliyet</th><th></th></tr></thead>
       <tbody id="bkBody"></tbody>
     </table></div></div>
@@ -728,7 +728,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "59";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "60";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2164,9 +2164,16 @@ function renderDaily(){
     inp.setAttribute("aria-label", o.ie+" — "+trDate(date)+" üretim adedi; vardiyaları artı ile toplayabilirsin");
     inp.title="Vardiyaları artı ile yazabilirsin: 12000+13500+11000";
     inp.readOnly=!canEdit();
-    inp.addEventListener("input", ()=>{ setDay(o, date, inp.value); });
+    /* Vardiyalar artıyla yazıldığında toplamı kutunun altında anında göster. */
+    const toplamSat=el("div","hint mono"); toplamSat.style.textAlign="right"; toplamSat.style.marginTop="2px";
+    const toplamYaz=()=>{
+      const t=inp.value.trim(), s=parseNum(t);
+      toplamSat.textContent = (s!=null && (isSum(t)||t.charAt(0)==="=")) ? "= "+(Number.isInteger(s)?fmt(s):fmt2(s)) : "";
+    };
+    toplamYaz();
+    inp.addEventListener("input", ()=>{ setDay(o, date, inp.value); toplamYaz(); });
     inp.addEventListener("change", ()=>{ renderDaily(); });
-    inTd.appendChild(inp); tr.appendChild(inTd);
+    inTd.appendChild(inp); inTd.appendChild(toplamSat); tr.appendChild(inTd);
     const hTd=el("td","r"), hinp=el("input");
     hinp.type="text"; hinp.className="mono"; hinp.style.width="86px"; hinp.style.textAlign="right";
     hinp.value = hatOf(o,date)==null ? "" : String(hatOf(o,date)).replace(".",",");
@@ -2243,6 +2250,14 @@ function durToplam(o){ let t=0; for(const k in (o.dur||{})) t+=n0(o.dur[k]); ret
 const DURUS_BAKIM_TUR={"Arıza":"ARIZA","Planlı bakım":"BAKIM"};
 function durusRef(o,date){ return (o._id||o.ie||"")+"|"+date; }
 function bakimBul(ref){ return S.bakim.find(x=>x.kaynak==="gunluk"&&x.ref===ref)||null; }
+/* Günlük girişten gelen kaydın ref'i "işemri|tarih" biçiminde; duruşun hangi iş emrinde
+   yaşandığını buradan çözeriz, ürün adı böylece bakım listesinde de görünür. */
+function bakimEmri(x){
+  if(!x || x.kaynak!=="gunluk" || !x.ref) return null;
+  const id=String(x.ref).split("|")[0];
+  return S.orders.find(o=>(o._id||o.ie||"")===id)||null;
+}
+function bakimUrunAd(x){ const o=bakimEmri(x); return o ? (o.urun||o.kod||"") : ""; }
 /* Bütün duruşları bakım listesiyle eşitler: eski kayıtlar da görünür, silinen duruşun
    kaydı düşer. Türetilmiş veri olduğu için her cihazda aynı sonucu verir. */
 function durusBakimTumu(){
@@ -3242,6 +3257,16 @@ function silHucre(sil){
   const c=el("td","r"), b=el("button","btn sm danger","Sil");
   b.addEventListener("click",sil); c.appendChild(b); return c;
 }
+/* Ürün hücresi: ürün adı, altında iş emri numarası. Elle açılan kayıt bir iş emrine
+   bağlı olmadığı için orada boş kalır. */
+function urunHucre(x){
+  const o=bakimEmri(x), c=el("td");
+  if(!o){ c.appendChild(el("span","hint","—")); return c; }
+  const ad=el("div",null,o.urun||o.kod||"—");
+  c.appendChild(ad);
+  if(o.ie) c.appendChild(el("div","hint",o.ie));
+  return c;
+}
 function renderBakim(){
   const q=ara($("#bkSearch").value.trim());
   const tur=$("#bkTur").value, from=$("#bkFrom").value, to=$("#bkTo").value;
@@ -3249,12 +3274,14 @@ function renderBakim(){
     if(!tarihArasi(x.tarih||"",from,to)) return false;
     if(tur && (x.tur||"ARIZA")!==tur) return false;
     if(!q) return true;
-    return ara(machineLabel(x.makine)+" "+(x.sebep||"")+" "+(x.islem||"")).indexOf(q)>=0;
+    const o=bakimEmri(x);
+    return ara(machineLabel(x.makine)+" "+(x.sebep||"")+" "+(x.islem||"")
+      +" "+(o?(o.urun||"")+" "+(o.kod||"")+" "+(o.ie||""):"")).indexOf(q)>=0;
   }).sort((a,b)=>String(b.tarih||"").localeCompare(String(a.tarih||"")));
   let sure=0, maliyet=0; list.forEach(x=>{ sure+=n0(x.sure); maliyet+=n0(x.maliyet); });
   $("#bkCount").textContent=fmt(list.length)+" kayıt · "+fmt1(sure)+" saat · "+fmt(maliyet)+" ₺";
   const tb=$("#bkBody"); tb.innerHTML="";
-  if(!list.length){ const tr=el("tr"), c=el("td","empty"); c.colSpan=8; c.textContent="Bu aralıkta bakım ya da arıza kaydı yok"; tr.appendChild(c); tb.appendChild(tr); return; }
+  if(!list.length){ const tr=el("tr"), c=el("td","empty"); c.colSpan=9; c.textContent="Bu aralıkta bakım ya da arıza kaydı yok"; tr.appendChild(c); tb.appendChild(tr); return; }
   const frag=document.createDocumentFragment();
   list.forEach(x=>{
     const tr=el("tr");
@@ -3267,6 +3294,7 @@ function renderBakim(){
       const mk=el("td"); mk.appendChild(el("span",null,machineLabel(x.makine)||"—"));
       mk.appendChild(el("span","rozet","Günlük Giriş"));
       tr.appendChild(mk);
+      tr.appendChild(urunHucre(x));
       tr.appendChild(td(turAdi(x.tur)));
       tr.appendChild(cellInput(x,"sebep","text",null,null,saveBakim));
       tr.appendChild(cellInput(x,"islem","text",null,null,saveBakim));
@@ -3279,6 +3307,7 @@ function renderBakim(){
     }
     tr.appendChild(cellInput(x,"tarih","date",null,null,saveBakim));
     tr.appendChild(cellSelect(x,"makine",[["","— makine yok —"]].concat(machineOptions()),saveBakim));
+    tr.appendChild(urunHucre(x));
     tr.appendChild(cellSelect(x,"tur",BAKIM_TUR,saveBakim));
     tr.appendChild(cellInput(x,"sebep","text",null,null,saveBakim));
     tr.appendChild(cellInput(x,"islem","text",null,null,saveBakim));
@@ -3684,9 +3713,9 @@ function sheetMachines(){
   return rows;
 }
 function sheetBakim(){
-  const rows=[["Tarih","Makine / Ekipman","Tür","Sebep","Yapılan İşlem","Süre (saat)","Maliyet"]];
+  const rows=[["Tarih","Makine / Ekipman","Ürün","İş Emri","Tür","Sebep","Yapılan İşlem","Süre (saat)","Maliyet"]];
   S.bakim.slice().sort((a,b)=>String(a.tarih).localeCompare(String(b.tarih)))
-    .forEach(x=>rows.push([xlDate(x.tarih),machineLabel(x.makine),x.tur||"ARIZA",x.sebep||"",x.islem||"",
+    .forEach(x=>rows.push([xlDate(x.tarih),machineLabel(x.makine),bakimUrunAd(x),(bakimEmri(x)||{}).ie||"",x.tur||"ARIZA",x.sebep||"",x.islem||"",
       r2(x.sure),r2(x.maliyet)]));
   return rows;
 }
@@ -3919,7 +3948,7 @@ fillMachineSelects();
 $("#dDate").value = SEED.bitis;
 $("#dDate").min = "2020-01-01";
 const _fr=fullRange(); $("#sFrom").value=_fr.from; $("#sTo").value=_fr.to;
-$("#buildTag").textContent="· sürüm "+BUILD+" · 6 Eylül 2026";
+$("#buildTag").textContent="· sürüm "+BUILD+" · 9 Eylül 2026";
 /* Excel kitaplığı yalnızca dosya indirmenin çalıştığı ortamda ve yalnızca bir kez yüklenir. */
 if(!window.claude){
   const _sc=document.createElement("script");
