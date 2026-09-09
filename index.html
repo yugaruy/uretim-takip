@@ -728,7 +728,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "60";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "62";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1103,7 +1103,8 @@ function calc(o){
   const Q = (n0(o.gcevrim)>0 && n0(o.cgoz)>0) ? 3600/n0(o.gcevrim)*n0(o.cgoz) : 0; // Gerçekleşen saatlik kapasite
   let T = 0, son = null;     // T: günlük girişlerin toplamı (hatalılar dâhil, makine bunları da üretti)
   for (const k in o.days){ const v=n0(o.days[k]); if(v){ T+=v; if(!son||k>son) son=k; } }
-  const J = Math.max(T-n0(o.hatali), 0);  // Gerçekleşen üretim: hatalılar düşülmüş sağlam adet
+  const J = T;                // Üretilen adet: girilen günlük üretimin toplamı. Hatalı adet
+                              // ayrı takip edilir, üretilen adetten düşülmez.
   const K = P ? T/P : 0;      // Planlanan çalışma saati
   const L = Q ? T/Q : 0;      // Gerçekleşen çalışma saati
   const M = (!L || L<K) ? 0 : 1-(K/L);  // Sapma oranı
@@ -1205,11 +1206,16 @@ const BASE_COLS=[
   {c:"J", g:"uretim",    t:"Üretilen Adet", w:106, calc:true},
   {c:"pct", g:"uretim",  t:"Gerçekleşme",        w:104, calc:true, meter:true},
   {c:"kalan", g:"uretim",    t:"Kalan Adet",      w:86, calc:true},
-  {c:"kalanGun", g:"uretim", t:"Kalan Gün (24 sa)", w:82, calc:true, dec:true},
-  {c:"hizGun", g:"uretim",   t:"Bu Hızla Gün",    w:82, calc:true, dec:true},
-  {c:"gercekGun", g:"uretim", t:"Gerçek Tempoyla Gün", w:88, calc:true, dec:true},
-  {c:"bitisTeorik", g:"uretim", t:"Hedef Bitiş", w:100, calc:true, tarih:true},
-  {c:"bitis", g:"uretim",    t:"Tahmini Bitiş",   w:100, calc:true, tarih:true},
+  {c:"kalanGun", g:"uretim", t:"Kesintisiz Kaç Gün", w:88, calc:true, dec:true,
+   ipucu:"Kalan adet, makine 24 saat kesintisiz çalışsa ölçülen hızla kaç günde biter"},
+  {c:"hizGun", g:"uretim",   t:"Son 5 Günün Hızıyla", w:96, calc:true, dec:true,
+   ipucu:"Kalan adet, üretim yapılan son 5 günün ortalama günlük adediyle kaç günde biter"},
+  {c:"gercekGun", g:"uretim", t:"Baştan Beri Ortalamayla", w:104, calc:true, dec:true,
+   ipucu:"Kalan adet, ilk üretim gününden bugüne kadarki ortalama tempoyla — aradaki duruş günleri de sayılarak — kaç günde biter"},
+  {c:"bitisTeorik", g:"uretim", t:"Hedef Bitiş", w:100, calc:true, tarih:true,
+   ipucu:"Kesintisiz çalışma varsayımıyla bitiş tarihi"},
+  {c:"bitis", g:"uretim",    t:"Tahmini Bitiş",   w:100, calc:true, tarih:true,
+   ipucu:"Şu anki gerçek tempo sürerse beklenen bitiş tarihi"},
   {c:"K", g:"uretim",    t:"Hedef Saat", w:96, calc:true, dec:2},
   {c:"L", g:"uretim",    t:"Çalışılan Saat",     w:96, calc:true, dec:2},
   {c:"M", g:"uretim",    t:"Sapma Oranı",        w:82, calc:true, pct:true},
@@ -1434,6 +1440,7 @@ function renderHead(){
       if(col.frozen) lt.style.left=col.left+"px";
       lr.appendChild(lt);
       const th=el("th",null,col.t);
+      if(col.ipucu) th.title=col.ipucu;
       th.className=(col.frozen?"frz ":"")+(col.lastFrz?"last-frz ":"")+(col.g?"g-"+col.g+" ":"")+((col.type==="num"||col.type==="day"||col.calc)?"num-c":"");
       if(col.frozen) th.style.left=col.left+"px";
       const sk=col.rownum ? "" : (col.k||col.c);
@@ -2353,22 +2360,22 @@ function renderSummary(){
     let inRange=0;
     for(const k in o.days){ if(k>=from&&k<=to){ const v=n0(o.days[k]); if(v){ inRange+=v; const w=weekStart(k); byWeek[w]=(byWeek[w]||0)+v; byDay[k]=(byDay[k]||0)+v; } } }
     if(!inRange) return;
-    /* Hatalı adet iş emrinin tamamına ait; döneme düşen payı üretim oranıyla alınır ve sağlam adetten düşülür. */
+    /* Hatalı adet iş emrinin tamamına ait; döneme düşen payı üretim oranıyla alınır.
+       Üretim toplamından düşülmez, ayrı gösterilir. */
     const pay = c.T ? inRange/c.T : 0;
-    const saglam = Math.max(inRange - n0(o.hatali)*pay, 0);
-    plan+=n0(o.plan); J+=saglam;
+    plan+=n0(o.plan); J+=inRange;
     const h = c.Q ? inRange/c.Q : 0; hours+=h;
     fire+=c.V*pay;
     if(n0(o.plan) && c.J>=n0(o.plan)) done++; else active++;
     if(c.M){ devSum+=c.M; devN++; } else devN++;
     const mk=o.makine||"";
     const m = byMachine[mk] || (byMachine[mk]={n:0,q:0,h:0,dev:0,devN:0,durus:0,hatali:0,ver:0,verQ:0});
-    m.n++; m.q+=saglam; m.h+=h; m.dev+=c.M; m.devN++;
+    m.n++; m.q+=inRange; m.h+=h; m.dev+=c.M; m.devN++;
     m.durus+=n0(o.durus)*pay; m.hatali+=n0(o.hatali)*pay;
     if(c.P&&c.Q){ m.ver += (c.Q/c.P)*inRange; m.verQ += inRange; }
     const pk=o.kod||"—";
     const p = byProduct[pk] || (byProduct[pk]={n:0,q:0,fire:0,ad:o.urun});
-    p.n++; p.q+=saglam; p.fire+=c.V*pay;
+    p.n++; p.q+=inRange; p.fire+=c.V*pay;
   });
   const k=$("#sKpis"); k.innerHTML="";
   k.appendChild(kpi("Hareketli iş emri", fmt(active+done), (done?fmt(done)+" tamamlandı · ":"")+fmt(active)+" devam ediyor"));
@@ -3399,7 +3406,7 @@ async function toClipboard(text,okMsg){
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
 /* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
-const PRINT_LABEL={maliyetCevrim:"Maliyet çevrimi",calisVerim:"Çalışma verimi",kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kalan gün",hizGun:"Hızla gün",gercekGun:"Gerçek gün",bitisTeorik:"Hedef bitiş",bitis:"Tahmini bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+const PRINT_LABEL={maliyetCevrim:"Maliyet çevrimi",calisVerim:"Çalışma verimi",kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kesintisiz gün",hizGun:"Son 5 gün hızı",gercekGun:"Ortalama tempo",bitisTeorik:"Hedef bitiş",bitis:"Tahmini bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
   plan:"Hedef adet",J:"Üretilen adet",pct:"Gerç. %",K:"Hedef saat",L:"Çalışılan saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Saatlik kapasite",Q:"Saatlik üretim",vardiya:"Vardiya (8 sa)",
   R:"Günlük kapasite",S:"Günlük üretim",hatali:"Hatalı",V:"Fire (kg)"};
