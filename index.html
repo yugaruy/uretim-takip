@@ -2114,8 +2114,28 @@ function renderDaily(){
     const p=el("td"); p.appendChild(el("span","strong",o.urun||"—")); p.appendChild(el("span","sub",o.kod||"")); tr.appendChild(p);
     tr.appendChild(td(machineLabel(o.makine)));
     tr.appendChild(td(o.kgoz==null?"—":fmt(o.kgoz),"r mono"));
-    tr.appendChild(td(c.kapaliGoz?fmt(c.kapaliGoz):"—","r mono"));
-    tr.appendChild(td(o.cgoz==null?"—":fmt(o.cgoz),"r mono"));
+    /* Kapalı ve aktif göz aynı bilginin iki yüzü: hangisi yazılırsa öbürü ondan çıkar.
+       Kalıbın toplam gözü ürün bilgisidir, burada değişmez. */
+    const gozKutu=(deger,yaz,etiket)=>{
+      const c2=el("td","r"), i=el("input");
+      i.type="text"; i.className="mono"; i.style.width="72px"; i.style.textAlign="right";
+      i.value = deger==null ? "" : String(deger);
+      i.placeholder="—";
+      i.readOnly=!canEdit();
+      i.setAttribute("aria-label", o.ie+" — "+etiket);
+      i.addEventListener("change", ()=>{
+        if(!canEdit()) return;
+        const top=n0(o.kgoz);
+        if(!top){ toast("Önce ürünün kalıp göz sayısı girilmeli"); renderDaily(); return; }
+        const v=parseNum(i.value);
+        if(v==null||i.value.trim()===""){ renderDaily(); return; }
+        yaz(Math.max(0,Math.min(top,Math.round(v))),top);
+        saveOrder(o); renderDaily();
+      });
+      c2.appendChild(i); return c2;
+    };
+    tr.appendChild(gozKutu(c.kapaliGoz||null,(v,top)=>{ o.cgoz=top-v; },"kapalı göz sayısı"));
+    tr.appendChild(gozKutu(o.cgoz,(v)=>{ o.cgoz=v; },"aktif göz sayısı"));
     tr.appendChild(td(o.cevrim==null?"—":fmt2(o.cevrim),"r mono"));
     /* Gerçek çevrim ölçülen bir değer: buradan denenebilsin, çevrim performansı ve
        saatlik üretim anında yeniden hesaplansın. İş emrinin tamamı için geçerlidir. */
