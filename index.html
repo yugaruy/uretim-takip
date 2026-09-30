@@ -1124,6 +1124,10 @@ function calc(o){
   const cevrimPerf = (n0(o.cevrim)>0 && n0(o.gcevrim)>0) ? n0(o.cevrim)/n0(o.gcevrim) : 0;
   const kalan = Math.max(n0(o.plan)-J, 0);
   const kalanGun = (Q && kalan) ? kalan/(Q*24) : 0;
+  /* Teorik çevrimle kesintisiz: kalıbın bütün gözleri açık olsaydı ve yalnız aktif gözlerle. */
+  const toplamGozHiz = (n0(o.cevrim)>0 && n0(o.kgoz)>0) ? 3600/n0(o.cevrim)*n0(o.kgoz)*24 : 0;
+  const kalanGunToplamGoz = (toplamGozHiz && kalan) ? kalan/toplamGozHiz : 0;
+  const kalanGunAktifGoz = (P && kalan) ? kalan/(P*24) : 0;
   let hiz=0;
   if(kalan){
     const gunler=Object.keys(o.days).filter(k=>n0(o.days[k])).sort().slice(-5);
@@ -1138,7 +1142,7 @@ function calc(o){
   const gercekGun = gercekHiz ? kalan/gercekHiz : 0;
   const bitisTeorik = (!kalan||!kalanGun) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(kalanGun)));
   const bitis = (!kalan) ? "" : addWorkDays(todayISO(), Math.max(1,Math.ceil(gercekGun||hizGun||kalanGun||0)));
-  return {P:P,Q:Q,J:J,T:T,maliyetCevrim:maliyetCevrim,calisVerim:calisVerim,kapaliGoz:kapaliGoz,cevrimPerf:cevrimPerf,kalan:kalan,kalanGun:kalanGun,hizGun:hizGun,gercekGun:gercekGun,bitisTeorik:bitisTeorik,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
+  return {P:P,Q:Q,J:J,T:T,maliyetCevrim:maliyetCevrim,calisVerim:calisVerim,kapaliGoz:kapaliGoz,cevrimPerf:cevrimPerf,kalan:kalan,kalanGun:kalanGun,kalanGunToplamGoz:kalanGunToplamGoz,kalanGunAktifGoz:kalanGunAktifGoz,hizGun:hizGun,gercekGun:gercekGun,bitisTeorik:bitisTeorik,bitis:bitis,K:K,L:L,M:M,N:N,R:P*24,S:Q*24,vardiya:P*8,V:V,pct:pct,son:son};
 }
 function devClass(m){ return m>=0.20 ? "crit" : m>=0.05 ? "warn" : "ok"; }
 
@@ -1206,6 +1210,10 @@ const BASE_COLS=[
   {c:"J", g:"uretim",    t:"Üretilen Adet", w:106, calc:true},
   {c:"pct", g:"uretim",  t:"Gerçekleşme",        w:104, calc:true, meter:true},
   {c:"kalan", g:"uretim",    t:"Kalan Adet",      w:86, calc:true},
+  {c:"kalanGunToplamGoz", g:"uretim", t:"Toplam Göze Göre Kaç Gün", w:96, calc:true, dec:true,
+   ipucu:"Kalan adet, teorik çevrimle ve kalıbın bütün gözleri açıkken 24 saat kesintisiz kaç günde biter"},
+  {c:"kalanGunAktifGoz", g:"uretim", t:"Aktif Göze Göre Kaç Gün", w:96, calc:true, dec:true,
+   ipucu:"Kalan adet, teorik çevrimle ve yalnız aktif gözlerle 24 saat kesintisiz kaç günde biter; haftalık plan bu süreyle yapılır"},
   {c:"kalanGun", g:"uretim", t:"Kesintisiz Kaç Gün", w:88, calc:true, dec:true,
    ipucu:"Kalan adet, makine 24 saat kesintisiz çalışsa ölçülen hızla kaç günde biter"},
   {c:"hizGun", g:"uretim",   t:"Son 5 Günün Hızıyla", w:96, calc:true, dec:true,
@@ -2618,15 +2626,11 @@ function haftaNo(iso){
 /* Ürün adından sabit bir renk tonu: aynı ürün her hafta aynı renkte görünsün. */
 function planHue(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))%360; return h; }
 function planAd(o){ return String(o.urun||o.kod||o.ie||"").toLocaleUpperCase("tr"); }
-/* İş emrinin günlük temposu: üretim girildiyse ilk ve son giriş arasındaki gerçek hız,
-   girilmediyse çevrim süresi ve göz sayısından çıkan teorik günlük kapasite. */
+/* İş emrinin günlük temposu: teorik çevrim ve aktif göz sayısıyla 24 saatlik kapasite.
+   Teorik çevrim girilmemişse gerçekleşen çevrimle hesaplanır. */
 function planGunlukHiz(o){
   const c=calc(o);
-  let ilk=null, son=null, T=0;
-  for(const k in (o.days||{})){ const v=n0(o.days[k]); if(v){ T+=v; if(!ilk||k<ilk) ilk=k; if(!son||k>son) son=k; } }
-  const gecen=(ilk&&son)?isGunSayisi(ilk,son):0;
-  if(gecen&&T) return T/gecen;
-  return c.S || c.R || 0;
+  return c.R || c.S || 0;
 }
 function planToplamGun(o){
   const hiz=planGunlukHiz(o), plan=n0(o.plan);
@@ -3406,7 +3410,7 @@ async function toClipboard(text,okMsg){
 /* Ekrandaki ızgara başarım için sadece görünen satırları çizer; yazdırmada
    süzgeçten geçen bütün satırlar, gün sütunları olmadan tek tabloya yazılır. */
 /* Çıktıda sütun başlıkları kısalır; ekrandaki tam adlar aynen kalır. */
-const PRINT_LABEL={maliyetCevrim:"Maliyet çevrimi",calisVerim:"Çalışma verimi",kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kesintisiz gün",hizGun:"Son 5 gün hızı",gercekGun:"Ortalama tempo",bitisTeorik:"Hedef bitiş",bitis:"Tahmini bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
+const PRINT_LABEL={maliyetCevrim:"Maliyet çevrimi",calisVerim:"Çalışma verimi",kapali:"Durum",kapaliGoz:"Kapalı göz",cevrimPerf:"Çevrim perf.",kalan:"Kalan",kalanGun:"Kesintisiz gün",kalanGunToplamGoz:"Toplam göze göre gün",kalanGunAktifGoz:"Aktif göze göre gün",hizGun:"Son 5 gün hızı",gercekGun:"Ortalama tempo",bitisTeorik:"Hedef bitiş",bitis:"Tahmini bitiş",cevrim:"Çevrim (sn)",gcevrim:"Gerç. Çevrim",kgoz:"Kalıp Göz",cgoz:"Çalışan Göz",
   plan:"Hedef adet",J:"Üretilen adet",pct:"Gerç. %",K:"Hedef saat",L:"Çalışılan saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Saatlik kapasite",Q:"Saatlik üretim",vardiya:"Vardiya (8 sa)",
   R:"Günlük kapasite",S:"Günlük üretim",hatali:"Hatalı",V:"Fire (kg)"};
