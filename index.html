@@ -303,8 +303,11 @@ td.pcell{font-weight:700;font-size:11px;line-height:1.2;text-transform:uppercase
   background:hsl(var(--h,210) 46% 84%);color:#1a1a1a;border:1px solid rgba(0,0,0,.10)}
 td.pcell.ger{box-shadow:inset 0 -3px 0 rgba(0,0,0,.16)}
 /* Aynı güne düşen birden çok iş: hücre her iş için kendi renginde bir banda bölünür. */
-table.plan td.pcell.pcok{padding:0;background:transparent}
-.pcoklu{display:flex;flex-direction:column;flex:1;align-self:stretch;min-height:100%}
+/* Tablo hücresinde yüzdelik boy ancak hücreye bir boy verilince işler; 1px en az boy
+   sayılır, satır yine içeriğe göre uzar ve bantlar hücreyi boşluk bırakmadan doldurur. */
+table.plan td.pcell.pcok{padding:0;background:transparent;height:1px}
+.pcoklu{display:flex;flex-direction:column;flex:1;align-self:stretch;height:100%}
+.pparca{display:flex;flex-direction:column;justify-content:center}
 .pparca{flex:1;padding:4px 8px;background:hsl(var(--h,210) 46% 84%);color:#1a1a1a}
 .pparca+.pparca{border-top:1px dashed rgba(0,0,0,.35)}
 .pparca.ger{box-shadow:inset 0 -3px 0 rgba(0,0,0,.16)}
@@ -387,6 +390,7 @@ td.pnot textarea::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
   table.plan td.pkod{font-family:ui-monospace,Consolas,"SF Mono",monospace;font-size:11.5px;color:var(--muted);
     background:var(--surface-2);border-top:0;padding-top:0;display:block}
   td.pcell{border-radius:6px;justify-content:flex-start}
+  table.plan td.pcell.pcok{height:auto} .pcoklu{height:auto}
   table.plan td.pcell::before{color:inherit;opacity:.75}
   table.plan td.pnot{display:block}
   table.plan td.pnot::before{display:block;margin-bottom:2px}
