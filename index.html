@@ -302,6 +302,12 @@ table.plan col.c-gun{width:126px} table.plan col.c-not{width:380px}
 td.pcell{font-weight:700;font-size:11px;line-height:1.2;text-transform:uppercase;letter-spacing:.01em;
   background:hsl(var(--h,210) 46% 84%);color:#1a1a1a;border:1px solid rgba(0,0,0,.10)}
 td.pcell.ger{box-shadow:inset 0 -3px 0 rgba(0,0,0,.16)}
+/* Aynı güne düşen birden çok iş: hücre her iş için kendi renginde bir banda bölünür. */
+table.plan td.pcell.pcok{padding:0;background:transparent}
+.pcoklu{display:flex;flex-direction:column;flex:1;align-self:stretch;min-height:100%}
+.pparca{flex:1;padding:4px 8px;background:hsl(var(--h,210) 46% 84%);color:#1a1a1a}
+.pparca+.pparca{border-top:1px dashed rgba(0,0,0,.35)}
+.pparca.ger{box-shadow:inset 0 -3px 0 rgba(0,0,0,.16)}
 td.pcell.bos{background:#4a90d9;color:#fff;border-color:rgba(0,0,0,.12)}
 td.pcell.arizali{background:#d32020;color:#fff;border-color:rgba(0,0,0,.12)}
 td.pcell.bakim{background:#e0a300;color:#241a00;border-color:rgba(0,0,0,.12)}
@@ -309,11 +315,15 @@ td.pcell small{display:block;font-size:9.5px;font-weight:600;opacity:.72;letter-
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) td.pcell{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0;border-color:rgba(255,255,255,.12)}
   :root:not([data-theme="light"]) td.pcell.bos{background:#2b5e94;color:#eaf2fb}
   :root:not([data-theme="light"]) td.pcell.arizali{background:#8f2020;color:#ffecec}
-  :root:not([data-theme="light"]) td.pcell.bakim{background:#7a5c00;color:#fff4d6}}
+  :root:not([data-theme="light"]) td.pcell.bakim{background:#7a5c00;color:#fff4d6}
+  :root:not([data-theme="light"]) .pparca{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0}
+  :root:not([data-theme="light"]) .pparca+.pparca{border-top-color:rgba(255,255,255,.4)}}
 :root[data-theme="dark"] td.pcell{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0;border-color:rgba(255,255,255,.12)}
 :root[data-theme="dark"] td.pcell.bos{background:#2b5e94;color:#eaf2fb}
 :root[data-theme="dark"] td.pcell.arizali{background:#8f2020;color:#ffecec}
 :root[data-theme="dark"] td.pcell.bakim{background:#7a5c00;color:#fff4d6}
+:root[data-theme="dark"] .pparca{background:hsl(var(--h,210) 30% 27%);color:#f0f0f0}
+:root[data-theme="dark"] .pparca+.pparca{border-top-color:rgba(255,255,255,.4)}
 th.pbugun-bas{background:var(--accent);color:var(--accent-ink)}
 td.pcell.pbugun{outline:2px solid var(--ink);outline-offset:-2px}
 td.pcell.pgecmis{opacity:.62}
@@ -2645,49 +2655,42 @@ function planIlkSon(o){
   for(const k in (o.days||{})){ if(n0(o.days[k])){ if(!ilk||k<ilk) ilk=k; if(!son||k>son) son=k; } }
   return {ilk:ilk,son:son};
 }
-/* Bir iş emrinin makineyi tuttuğu gün aralığı. Üretim girilmiş olması şart değil:
-   iş emri makineye atandığı andan planlanan adet bitene kadar makineyi tutar. */
-function planAralik(o,kuyrukBas){
-  const bugun=todayISO(), gs=planIlkSon(o), bitti=(n0(o.plan)>0 && calc(o).kalan<=0);
-  const bas = gs.ilk || kuyrukBas;
-  let bit;
-  if(bitti) bit = gs.son || bas;
-  else if(gs.ilk){
-    const suren = gs.son>bugun ? gs.son : bugun;
-    const kalan = planKalanGun(o);
-    bit = addWorkDays(suren, kalan?kalan-1:5);
-  } else {
-    const top = planToplamGun(o);
-    bit = addWorkDays(bas, top?top-1:5);
-  }
-  if(bit<bas) bit=bas;
-  return {o:o, bas:bas, bit:bit, tahmin:!planToplamGun(o)};
-}
-/* Makinedeki işler sıraya dizilir: başlamış olanlar kendi tarihinde, başlamamışlar
-   bir öncekinin bitişinden sonra. */
+/* Makinedeki işler sıraya dizilir: başlamış olanlar kendi tarihinde, başlamamışlar bir
+   öncekinin bittiği andan sonra. Konumlar kesirli iş günüdür (taban günden sayılır): bir iş
+   gün ortasında bitince sıradaki aynı gün başlar. Üretim girilmiş olması şart değil; iş emri
+   makineye atandığı andan planlanan adet bitene kadar makineyi tutar. */
 function planYerlesim(kod){
-  const basli=[], yeni=[];
+  const bugun=todayISO(), basli=[], yeni=[];
+  let taban=bugun;
   S.orders.forEach(o=>{
     if(o.makine!==kod) return;
     const gs=planIlkSon(o);
-    if(gs.ilk) basli.push({o:o,ilk:gs.ilk});
+    if(gs.ilk){ basli.push({o:o,gs:gs}); if(gs.ilk<taban) taban=gs.ilk; }
     else yeni.push({o:o});
   });
-  basli.sort((a,b)=>a.ilk.localeCompare(b.ilk));
+  basli.sort((a,b)=>a.gs.ilk.localeCompare(b.gs.ilk));
   yeni.sort((a,b)=>String(a.o.ie||"").localeCompare(String(b.o.ie||""),"tr"));
+  const yer=d=>isGunSayisi(taban,d)-1;
   const out=[];
-  let imlec=todayISO();
+  let imlec=yer(bugun);
+  /* Hız ya da hedef yoksa süre bilinmez; iş altı gün sürüyormuş gibi gösterilir. */
+  const ekle=(o,bas,sure)=>{
+    const bit=Math.round((bas+(sure||6))*1e6)/1e6;
+    out.push({o:o, bas:bas, bit:bit, tahmin:!sure});
+    if(bit>imlec) imlec=bit;
+  };
   basli.forEach(x=>{
-    const a=planAralik(x.o,x.ilk);
-    out.push(a);
-    if(a.bit>=imlec) imlec=addWorkDays(a.bit,1);
+    const o=x.o, hiz=planGunlukHiz(o), kalan=calc(o).kalan, bas=yer(x.gs.ilk);
+    if(n0(o.plan)>0 && kalan<=0){ ekle(o,bas,yer(x.gs.son)+1-bas); return; }
+    const sur=yer(x.gs.son>bugun?x.gs.son:bugun);
+    const kalanSure=(hiz&&kalan) ? kalan/hiz : 0;
+    ekle(o,bas,kalanSure ? sur+kalanSure-bas : 0);
   });
   yeni.forEach(x=>{
-    const a=planAralik(x.o,imlec);
-    out.push(a);
-    imlec=addWorkDays(a.bit,1);
+    const hiz=planGunlukHiz(x.o), plan=n0(x.o.plan);
+    ekle(x.o,imlec,(hiz&&plan) ? plan/hiz : 0);
   });
-  return out;
+  return {isler:out, yer:yer};
 }
 function planRows(ws){
   const gunler=[]; for(let i=0;i<6;i++) gunler.push(addDays(ws,i));
@@ -2696,16 +2699,18 @@ function planRows(ws){
     const cells=gunler.map(()=>({tip:"bos"}));
     const r={no:idx+1,kod:mi.kod,ad:mi.ad,tip:mi.tip,m:m,durum:durum,gunler:gunler,cells:cells};
     if(durum!=="calisiyor"){ for(let i=0;i<6;i++) cells[i]={tip:durum}; return r; }
-    const yer=planYerlesim(mi.kod);
+    const yp=planYerlesim(mi.kod);
     gunler.forEach((g,i)=>{
-      const uygun=yer.filter(a=>g>=a.bas && g<=a.bit);
+      /* Bir güne birden çok iş düşebilir: biri gün içinde biter, sıradaki başlar. */
+      const d=yp.yer(g);
+      const uygun=yp.isler.filter(a=>n0(a.o.days&&a.o.days[g]) || (a.bas<d+1 && a.bit>d));
       if(!uygun.length) return;
-      /* Aynı güne iki iş düşerse o gün üretim girileni öne alınır. */
-      let sec=uygun[0];
-      uygun.forEach(a=>{ if(n0(a.o.days&&a.o.days[g])) sec=a; });
-      const adet=n0(sec.o.days&&sec.o.days[g]);
-      cells[i]={tip:"is",o:sec.o,ger:adet>0,adet:adet,
-        gun:isGunSayisi(sec.bas,g), top:sec.tahmin?0:isGunSayisi(sec.bas,sec.bit)};
+      uygun.sort((a,b)=>a.bas-b.bas);
+      cells[i]={tip:"is",isler:uygun.map(a=>{
+        const adet=n0(a.o.days&&a.o.days[g]);
+        return {o:a.o,ger:adet>0,adet:adet,gun:d-Math.floor(a.bas)+1,
+          top:a.tahmin?0:Math.ceil(a.bit)-Math.floor(a.bas)};
+      })};
     });
     return r;
   });
@@ -2715,9 +2720,10 @@ function planAciklama(r){
   if(r.durum==="arizali") return "MAKİNE ARIZALI DURUMDADIR.";
   if(r.durum==="bakim") return "MAKİNE BAKIMDADIR, ÜRETİM PLANLANMADI.";
   const seq=[];
-  r.cells.forEach(c=>{ if(c.tip==="is" && (!seq.length||seq[seq.length-1]!==c.o)) seq.push(c.o); });
+  r.cells.forEach(c=>{ if(c.tip==="is") c.isler.forEach(p=>{ if(seq.indexOf(p.o)<0) seq.push(p.o); }); });
   if(!seq.length) return "MAKİNEDE AÇIK İŞ EMRİ YOK.";
-  const sonGun=o=>{ let i=-1; r.cells.forEach((c,k)=>{ if(c.tip==="is"&&c.o===o) i=k; }); return i; };
+  const parcasi=(c,o)=>c.tip==="is" ? c.isler.find(p=>p.o===o) : null;
+  const sonGun=o=>{ let i=-1; r.cells.forEach((c,k)=>{ if(parcasi(c,o)) i=k; }); return i; };
   const ilk=seq[0], t=planKalanGun(ilk);
   /* Kalan gün üç ayrı sebeple sıfır olabilir: iş bitmiştir, hedef adet girilmemiştir ya da
      çevrim/göz eksik olduğu için hız hesaplanamamıştır. Hepsine aynı cümleyi yazmak yanlış. */
@@ -2725,7 +2731,7 @@ function planAciklama(r){
   const gun = ()=>PLAN_GUN[sonGun(ilk)].toLocaleUpperCase("tr");
   /* İşin haftadaki son hücresi kaçıncı günse ondan anlaşılır: toplam gün sayısına ulaşmadıysa
      iş bu hafta bitmez, sonraki haftaya sarkar. Aksi hâlde haftanın son günü bitiş günü sanılır. */
-  let sonHucre=null; r.cells.forEach(c=>{ if(c.tip==="is"&&c.o===ilk) sonHucre=c; });
+  let sonHucre=null; r.cells.forEach(c=>{ const p=parcasi(c,ilk); if(p) sonHucre=p; });
   const sarkiyor = !bitti && !!(sonHucre && sonHucre.top && sonHucre.gun < sonHucre.top);
   let s = planAd(ilk)+" ÜRETİMİ "+(bitti ? "TAMAMLANDI" : t ? t+" GÜN DAHA SÜRER" : "SÜRÜYOR");
   if(seq.length===1){
@@ -2753,11 +2759,11 @@ function planHucreMetin(c){
   if(c.tip==="bos") return "MAKİNE BOŞ DURUMDA";
   if(c.tip==="arizali") return "MAKİNE ARIZA DURUMUNDA";
   if(c.tip==="bakim") return "MAKİNE BAKIMDA";
-  return planAd(c.o);
+  return c.isler.map(p=>planAd(p.o)).join(" / ");
 }
 function planHucreTam(c){
-  const m=planHucreMetin(c);
-  return (c.tip==="is"&&c.top) ? m+" ("+c.gun+"/"+c.top+". gün)" : m;
+  if(c.tip!=="is") return planHucreMetin(c);
+  return c.isler.map(p=>planAd(p.o)+(p.top?" ("+p.gun+"/"+p.top+". gün)":"")).join(" → ");
 }
 /* Metin alanı içeriğine göre boy alır. Not boşken ölçü yer tutucu metne göre yapılır,
    çünkü ekranda görünen odur. */
@@ -2804,18 +2810,26 @@ function renderPlan(){
     tr.appendChild(mak);
     r.cells.forEach((c,i)=>{
       const g=addDays(planWS,i), bugun=todayISO();
-      const cell=el("td","pcell "+(c.tip==="is"?(c.ger?"ger":""):c.tip)+
+      const cok=c.tip==="is" && c.isler.length>1;
+      const cell=el("td","pcell "+(c.tip==="is"?(cok?"pcok":(c.isler[0].ger?"ger":"")):c.tip)+
         (g===bugun?" pbugun":(g<bugun?" pgecmis":"")));
       cell.dataset.l=PLAN_GUN[i]+" "+trDate(addDays(planWS,i)).slice(0,5);
-      if(c.tip==="is") cell.style.setProperty("--h",planHue(planAd(c.o)));
-      cell.appendChild(document.createTextNode(planHucreMetin(c)));
-      if(c.tip==="is"){
+      const parcaYaz=(kutu,p)=>{
+        kutu.style.setProperty("--h",planHue(planAd(p.o)));
+        kutu.appendChild(document.createTextNode(planAd(p.o)));
         const alt=[];
-        if(c.adet) alt.push(fmt(c.adet)+" adet");
-        if(c.top) alt.push(c.gun+"/"+c.top+". gün");
-        else if(c.gun) alt.push(c.gun+". gün");
-        if(alt.length) cell.appendChild(el("small",null,alt.join(" · ")));
+        if(p.adet) alt.push(fmt(p.adet)+" adet");
+        if(p.top) alt.push(p.gun+"/"+p.top+". gün");
+        else if(p.gun) alt.push(p.gun+". gün");
+        if(alt.length) kutu.appendChild(el("small",null,alt.join(" · ")));
+      };
+      if(cok){
+        const liste=el("div","pcoklu");
+        c.isler.forEach(p=>{ const k=el("div","pparca"+(p.ger?" ger":"")); parcaYaz(k,p); liste.appendChild(k); });
+        cell.appendChild(liste);
       }
+      else if(c.tip==="is") parcaYaz(cell,c.isler[0]);
+      else cell.appendChild(document.createTextNode(planHucreMetin(c)));
       tr.appendChild(cell);
     });
     const not=el("td","pnot"); not.dataset.l="Açıklama";
@@ -2844,6 +2858,13 @@ function planTable(sep){
   });
   return out.join("\n");
 }
+/* Birden çok işin düştüğü gün hücresi işler kadar yatay banda bölünür. */
+function planBaskiRenk(c){
+  const renk=p=>"hsl("+planHue(planAd(p.o))+" 46% 84%)";
+  if(c.isler.length===1) return renk(c.isler[0]);
+  const n=c.isler.length;
+  return "linear-gradient(to bottom,"+c.isler.map((p,k)=>renk(p)+" "+(k/n*100)+"% "+((k+1)/n*100)+"%").join(",")+")";
+}
 function buildPrintPlan(){
   const rows=planRows(planWS), P=$("#printArea"); P.innerHTML="";
   const box=el("div","pplan");
@@ -2865,7 +2886,7 @@ function buildPrintPlan(){
     tr.appendChild(td((r.ad||"")+(r.tip?" "+r.tip:"")));
     r.cells.forEach(c=>{
       const cell=el("td","pcell",planHucreTam(c));
-      cell.style.background = c.tip==="is" ? "hsl("+planHue(planAd(c.o))+" 46% 84%)"
+      cell.style.background = c.tip==="is" ? planBaskiRenk(c)
         : c.tip==="arizali" ? "#d32020" : c.tip==="bakim" ? "#e0a300" : "#4a90d9";
       if(c.tip==="arizali"||c.tip==="bos") cell.style.color="#fff";
       tr.appendChild(cell);
