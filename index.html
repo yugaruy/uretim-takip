@@ -1,3 +1,4 @@
+<html lang="tr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
@@ -88,7 +89,17 @@ label.field>span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
 .scroll{overflow-x:auto}
 /* Ürün ve makine listelerinde başlık satırı aşağı kaydırınca da yerinde kalsın:
    tablo kendi içinde kaysın ki sticky başlık tutunacak bir kap bulsun. */
-#view-products>.panel>.scroll,#view-machines>.panel>.scroll{max-height:calc(100vh - 240px);overflow:auto}
+#view-products>.panel>.scroll,#view-machines>.panel>.scroll,#view-matris>.panel>.scroll{max-height:calc(100vh - 240px);overflow:auto}
+/* Kalıp–makine matrisi: ürün sütunu yatay kaydırmada solda sabit kalır. */
+#mxTable th.mx-m{text-align:center;white-space:normal;min-width:64px;letter-spacing:.03em}
+#mxTable th.mx-u{left:0;z-index:3}
+#mxTable td.mx-u{position:sticky;left:0;background:var(--surface);z-index:1;white-space:nowrap;border-right:1px solid var(--line)}
+#mxTable td.mx-u small{display:block;color:var(--muted);font-size:11px}
+#mxTable td.mx-c{text-align:center;padding:2px}
+.mx-btn{width:34px;height:26px;border:1px solid var(--line);border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;
+  background:var(--crit-soft);color:var(--crit);font-family:inherit;line-height:1}
+.mx-btn.var{background:var(--ok-soft);color:var(--ok);border-color:var(--accent-line)}
+.mx-btn:disabled{cursor:default}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
   color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:2}
@@ -372,7 +383,7 @@ td.pnot textarea::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
   .kpis{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
   .kpi .val{font-size:21px}
   .grid-scroll{max-height:calc(100vh - 250px)}
-  #view-products>.panel>.scroll,#view-machines>.panel>.scroll{max-height:none}
+  #view-products>.panel>.scroll,#view-machines>.panel>.scroll,#view-matris>.panel>.scroll{max-height:none}
   .gridbar{font-size:12px}
   .gridbar>span:last-child{display:none}
   /* Haftalık plan telefonda makine kartlarına dönüşür: günler alt alta okunur. */
@@ -478,6 +489,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
       <button class="tab" role="tab" data-view="rapor" aria-selected="false">Faaliyet Raporu</button>
       <button class="tab" role="tab" data-view="products" aria-selected="false">Ürün Listesi</button>
       <button class="tab" role="tab" data-view="machines" aria-selected="false">Makineler</button>
+      <button class="tab" role="tab" data-view="matris" aria-selected="false">Kalıp Makine Matrisi</button>
     </nav>
     <div class="top-right">
       <span class="saved" id="savedAt"></span>
@@ -728,6 +740,20 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
       <tbody id="mcBody"></tbody>
     </table></div></div>
     <p class="hint" style="margin-top:10px">İş emrindeki Makine sütunu bu listeden seçilir. Adı ya da tipi burada değiştirdiğinde tüm iş emirlerinde birlikte değişir; iş emirleri makine koduna bağlıdır.</p>
+  </section>
+
+  <!-- KALIP MAKİNE MATRİSİ -->
+  <section class="view" id="view-matris" hidden>
+    <div class="toolbar">
+      <input type="search" id="mxSearch" placeholder="Stok kodu veya ürün adı ara">
+      <span class="spacer"></span>
+      <span class="count" id="mxCount"></span>
+    </div>
+    <div class="panel"><div class="scroll"><table id="mxTable">
+      <thead id="mxHead"></thead>
+      <tbody id="mxBody"></tbody>
+    </table></div></div>
+    <p class="hint" style="margin-top:10px">✓ kalıp o makinede çalışır, ✗ çalışmaz. İşarete tıklayınca değişir. Satırlar Ürün Listesi'nden, sütunlar Makineler sekmesinden gelir. Hiç işaretlenmemiş bir kalıpta, iş emirlerinde o kalıbın girildiği makineler ✓ gösterilir.</p>
   </section>
 </main>
 
@@ -1193,7 +1219,7 @@ function fillMachineSelects(){
 }
 
 /* ---------- views ---------- */
-const views = ["orders","daily","plan","bakim","summary","rapor","products","machines"];
+const views = ["orders","daily","plan","bakim","summary","rapor","products","machines","matris"];
 let view = "orders";
 function setView(v){
   view=v;
@@ -1227,9 +1253,9 @@ const BASE_COLS=[
   {c:"kalanGunToplamGoz", g:"uretim", t:"Toplam Göze Göre Kaç Gün", w:96, calc:true, dec:true,
    ipucu:"Kalan adet, teorik çevrimle ve kalıbın bütün gözleri açıkken 24 saat kesintisiz kaç günde biter"},
   {c:"kalanGunAktifGoz", g:"uretim", t:"Aktif Göze Göre Kaç Gün", w:96, calc:true, dec:true,
-   ipucu:"Kalan adet, teorik çevrimle ve yalnız aktif gözlerle 24 saat kesintisiz kaç günde biter; haftalık plan bu süreyle yapılır"},
+   ipucu:"Kalan adet, teorik çevrimle ve yalnız aktif gözlerle 24 saat kesintisiz kaç günde biter"},
   {c:"kalanGun", g:"uretim", t:"Kesintisiz Kaç Gün", w:88, calc:true, dec:true,
-   ipucu:"Kalan adet, makine 24 saat kesintisiz çalışsa ölçülen hızla kaç günde biter"},
+   ipucu:"Kalan adet, gerçek çevrimle ve aktif gözlerle 24 saat kesintisiz kaç günde biter; haftalık plan bu süreyle yapılır"},
   {c:"hizGun", g:"uretim",   t:"Son 5 Günün Hızıyla", w:96, calc:true, dec:true,
    ipucu:"Kalan adet, üretim yapılan son 5 günün ortalama günlük adediyle kaç günde biter"},
   {c:"gercekGun", g:"uretim", t:"Baştan Beri Ortalamayla", w:104, calc:true, dec:true,
@@ -2640,11 +2666,11 @@ function haftaNo(iso){
 /* Ürün adından sabit bir renk tonu: aynı ürün her hafta aynı renkte görünsün. */
 function planHue(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))%360; return h; }
 function planAd(o){ return String(o.urun||o.kod||o.ie||"").toLocaleUpperCase("tr"); }
-/* İş emrinin günlük temposu: teorik çevrim ve aktif göz sayısıyla 24 saatlik kapasite.
-   Teorik çevrim girilmemişse gerçekleşen çevrimle hesaplanır. */
+/* İş emrinin günlük temposu: gerçekleşen çevrim ve aktif göz sayısıyla 24 saatlik kapasite.
+   Gerçekleşen çevrim girilmemişse teorik çevrimle hesaplanır. */
 function planGunlukHiz(o){
   const c=calc(o);
-  return c.R || c.S || 0;
+  return c.S || c.R || 0;
 }
 function planToplamGun(o){
   const hiz=planGunlukHiz(o), plan=n0(o.plan);
@@ -3966,6 +3992,41 @@ function clearPanel(){ return openPanel("clear",d=>{
   row.appendChild(go); row.appendChild(cl);
   d.appendChild(row);
 }); }
+/* ---------- KALIP MAKİNE MATRİSİ ----------
+   Her ürün çalışabildiği makinelerin kodlarını p.makineler dizisinde tutar; ürünle birlikte
+   kaydedilir ve buluta gider. Hiç işaretlenmemiş üründe iş emirlerindeki makineler gösterilir,
+   ilk tıklamada bu liste ürüne yazılır. */
+function renderMatris(){
+  const q=ara($("#mxSearch").value.trim());
+  const gecmis={};
+  S.orders.forEach(o=>{ if(o.kod&&o.makine) (gecmis[o.kod]=gecmis[o.kod]||new Set()).add(o.makine); });
+  const list=S.products.filter(p=>!q||ara((p.kod||"")+" "+(p.ad||"")).indexOf(q)>=0);
+  $("#mxCount").textContent=fmt(list.length)+" ürün · "+fmt(S.machines.length)+" makine";
+  const hr=el("tr"); const th0=el("th","mx-u","Ürün"); hr.appendChild(th0);
+  S.machines.forEach(m=>{ const th=el("th","mx-m",m.ad||m.kod||""); th.title=m.kod||""; hr.appendChild(th); });
+  const hd=$("#mxHead"); hd.innerHTML=""; hd.appendChild(hr);
+  const tb=$("#mxBody"); tb.innerHTML="";
+  const frag=document.createDocumentFragment(), yaz=canEdit();
+  list.forEach(p=>{
+    const tr=el("tr");
+    const tu=el("td","mx-u",p.kod||""); tu.appendChild(el("small",null,p.ad||"")); tr.appendChild(tu);
+    const secili=()=>Array.isArray(p.makineler) ? p.makineler : Array.from(gecmis[p.kod]||[]);
+    S.machines.forEach(m=>{
+      const c=el("td","mx-c"), b=el("button","mx-btn"); b.type="button"; b.disabled=!yaz;
+      const boya=()=>{ const v=secili().indexOf(m.kod)>=0; b.classList.toggle("var",v); b.textContent=v?"✓":"✗";
+        b.title=(p.kod||"")+" · "+(m.ad||m.kod||"")+(v?": çalışır":": çalışmaz"); };
+      b.addEventListener("click",()=>{
+        const l=secili().slice(), i=l.indexOf(m.kod);
+        if(i>=0) l.splice(i,1); else l.push(m.kod);
+        p.makineler=l; saveProduct(p); boya();
+      });
+      boya(); c.appendChild(b); tr.appendChild(c);
+    });
+    frag.appendChild(tr);
+  });
+  tb.appendChild(frag);
+}
+$("#mxSearch").addEventListener("input",renderMatris);
 $("#btnClear").addEventListener("click",clearPanel);
 $("#btnClear2").addEventListener("click",clearPanel);
 /* ---------- boot ---------- */
@@ -3977,6 +4038,7 @@ function render(){
   else if(view==="bakim") renderBakim();
   else if(view==="summary") renderSummary();
   else if(view==="machines") renderMachines();
+  else if(view==="matris") renderMatris();
   else renderProducts();
   paintBrand(); paintStatus();
 }
