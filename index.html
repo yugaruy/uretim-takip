@@ -753,7 +753,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
       <thead id="mxHead"></thead>
       <tbody id="mxBody"></tbody>
     </table></div></div>
-    <p class="hint" style="margin-top:10px">✓ kalıp o makinede çalışır, ✗ çalışmaz. İşarete tıklayınca değişir. Satırlar Ürün Listesi'nden, sütunlar Makineler sekmesinden gelir. Hiç işaretlenmemiş bir kalıpta, iş emirlerinde o kalıbın girildiği makineler ✓ gösterilir.</p>
+    <p class="hint" style="margin-top:10px">✓ kalıp o makinede çalışır, ✗ çalışmaz. İşarete tıklayınca değişir. Satırlar Ürün Listesi'nden, sütunlar Makineler sekmesinden gelir (montaj ve paketleme hariç). Hiç işaretlenmemiş bir kalıpta, iş emirlerinde o kalıbın girildiği makineler ✓ gösterilir.</p>
   </section>
 </main>
 
@@ -768,7 +768,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "63";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "64";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3995,15 +3995,19 @@ function clearPanel(){ return openPanel("clear",d=>{
 /* ---------- KALIP MAKİNE MATRİSİ ----------
    Her ürün çalışabildiği makinelerin kodlarını p.makineler dizisinde tutar; ürünle birlikte
    kaydedilir ve buluta gider. Hiç işaretlenmemiş üründe iş emirlerindeki makineler gösterilir,
-   ilk tıklamada bu liste ürüne yazılır. */
+   ilk tıklamada bu liste ürüne yazılır. Montaj ve paketleme kalıp almadığı için sütun olmaz. */
+function matrisMakineleri(){
+  return S.machines.filter(m=>!/montaj|paketleme/.test(ara((m.kod||"")+" "+(m.ad||""))));
+}
 function renderMatris(){
+  const makineler=matrisMakineleri();
   const q=ara($("#mxSearch").value.trim());
   const gecmis={};
   S.orders.forEach(o=>{ if(o.kod&&o.makine) (gecmis[o.kod]=gecmis[o.kod]||new Set()).add(o.makine); });
   const list=S.products.filter(p=>!q||ara((p.kod||"")+" "+(p.ad||"")).indexOf(q)>=0);
-  $("#mxCount").textContent=fmt(list.length)+" ürün · "+fmt(S.machines.length)+" makine";
+  $("#mxCount").textContent=fmt(list.length)+" ürün · "+fmt(makineler.length)+" makine";
   const hr=el("tr"); const th0=el("th","mx-u","Ürün"); hr.appendChild(th0);
-  S.machines.forEach(m=>{ const th=el("th","mx-m",m.ad||m.kod||""); th.title=m.kod||""; hr.appendChild(th); });
+  makineler.forEach(m=>{ const th=el("th","mx-m",m.ad||m.kod||""); th.title=m.kod||""; hr.appendChild(th); });
   const hd=$("#mxHead"); hd.innerHTML=""; hd.appendChild(hr);
   const tb=$("#mxBody"); tb.innerHTML="";
   const frag=document.createDocumentFragment(), yaz=canEdit();
@@ -4011,7 +4015,7 @@ function renderMatris(){
     const tr=el("tr");
     const tu=el("td","mx-u",p.kod||""); tu.appendChild(el("small",null,p.ad||"")); tr.appendChild(tu);
     const secili=()=>Array.isArray(p.makineler) ? p.makineler : Array.from(gecmis[p.kod]||[]);
-    S.machines.forEach(m=>{
+    makineler.forEach(m=>{
       const c=el("td","mx-c"), b=el("button","mx-btn"); b.type="button"; b.disabled=!yaz;
       const boya=()=>{ const v=secili().indexOf(m.kod)>=0; b.classList.toggle("var",v); b.textContent=v?"✓":"✗";
         b.title=(p.kod||"")+" · "+(m.ad||m.kod||"")+(v?": çalışır":": çalışmaz"); };
