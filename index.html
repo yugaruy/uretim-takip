@@ -768,7 +768,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "62";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "63";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -4046,7 +4046,7 @@ fillMachineSelects();
 $("#dDate").value = SEED.bitis;
 $("#dDate").min = "2020-01-01";
 const _fr=fullRange(); $("#sFrom").value=_fr.from; $("#sTo").value=_fr.to;
-$("#buildTag").textContent="· sürüm "+BUILD+" · 9 Eylül 2026";
+$("#buildTag").textContent="· sürüm "+BUILD+" · 1 Ekim 2026";
 /* Excel kitaplığı yalnızca dosya indirmenin çalıştığı ortamda ve yalnızca bir kez yüklenir. */
 if(!window.claude){
   const _sc=document.createElement("script");
