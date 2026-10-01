@@ -91,7 +91,9 @@ label.field>span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
    tablo kendi içinde kaysın ki sticky başlık tutunacak bir kap bulsun. */
 #view-products>.panel>.scroll,#view-machines>.panel>.scroll,#view-matris>.panel>.scroll{max-height:calc(100vh - 240px);overflow:auto}
 /* Kalıp–makine matrisi: ürün sütunu yatay kaydırmada solda sabit kalır. */
-#mxTable th.mx-m{text-align:center;white-space:normal;min-width:64px;letter-spacing:.03em}
+#mxTable th.mx-m{text-align:center;white-space:normal;min-width:96px;letter-spacing:.03em;vertical-align:bottom;color:var(--ink-2)}
+#mxTable th.mx-m small{display:block;font-weight:500;letter-spacing:0;color:var(--muted);margin-top:2px}
+#mxTable th.mx-m small.mx-kod{font-size:9.5px;text-transform:none}
 #mxTable th.mx-u{left:0;z-index:3}
 #mxTable td.mx-u{position:sticky;left:0;background:var(--surface);z-index:1;white-space:nowrap;border-right:1px solid var(--line)}
 #mxTable td.mx-u small{display:block;color:var(--muted);font-size:11px}
@@ -768,7 +770,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "64";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "65";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -4007,7 +4009,12 @@ function renderMatris(){
   const list=S.products.filter(p=>!q||ara((p.kod||"")+" "+(p.ad||"")).indexOf(q)>=0);
   $("#mxCount").textContent=fmt(list.length)+" ürün · "+fmt(makineler.length)+" makine";
   const hr=el("tr"); const th0=el("th","mx-u","Ürün"); hr.appendChild(th0);
-  makineler.forEach(m=>{ const th=el("th","mx-m",m.ad||m.kod||""); th.title=m.kod||""; hr.appendChild(th); });
+  makineler.forEach(m=>{
+    const th=el("th","mx-m",m.ad||m.kod||"");
+    if(m.tip) th.appendChild(el("small",null,m.tip));
+    if(m.ad&&m.kod) th.appendChild(el("small","mx-kod",m.kod));
+    hr.appendChild(th);
+  });
   const hd=$("#mxHead"); hd.innerHTML=""; hd.appendChild(hr);
   const tb=$("#mxBody"); tb.innerHTML="";
   const frag=document.createDocumentFragment(), yaz=canEdit();
