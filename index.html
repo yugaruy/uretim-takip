@@ -87,9 +87,9 @@ label.field>span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
 /* ---------- table ---------- */
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
 .scroll{overflow-x:auto}
-/* Ürün ve makine listelerinde başlık satırı aşağı kaydırınca da yerinde kalsın:
+/* Ürün, makine ve günlük giriş listelerinde başlık satırı aşağı kaydırınca da yerinde kalsın:
    tablo kendi içinde kaysın ki sticky başlık tutunacak bir kap bulsun. */
-#view-products>.panel>.scroll,#view-machines>.panel>.scroll,#view-matris>.panel>.scroll{max-height:calc(100vh - 240px);overflow:auto}
+#view-products>.panel>.scroll,#view-machines>.panel>.scroll,#view-matris>.panel>.scroll,#view-daily>.panel>.scroll{max-height:calc(100vh - 240px);overflow:auto}
 /* Kalıp–makine matrisi: ürün sütunu yatay kaydırmada solda sabit kalır. */
 #mxTable th.mx-m{text-align:center;white-space:normal;min-width:96px;letter-spacing:.03em;vertical-align:bottom;color:var(--ink-2)}
 #mxTable th.mx-m small{display:block;font-weight:500;letter-spacing:0;color:var(--muted);margin-top:2px}
@@ -385,7 +385,7 @@ td.pnot textarea::placeholder{color:var(--ink-2);opacity:1;font-weight:600}
   .kpis{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
   .kpi .val{font-size:21px}
   .grid-scroll{max-height:calc(100vh - 250px)}
-  #view-products>.panel>.scroll,#view-machines>.panel>.scroll,#view-matris>.panel>.scroll{max-height:none}
+  #view-products>.panel>.scroll,#view-machines>.panel>.scroll,#view-matris>.panel>.scroll,#view-daily>.panel>.scroll{max-height:none}
   .gridbar{font-size:12px}
   .gridbar>span:last-child{display:none}
   /* Haftalık plan telefonda makine kartlarına dönüşür: günler alt alta okunur. */
