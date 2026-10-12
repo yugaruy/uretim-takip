@@ -455,18 +455,11 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 #printArea .pkpi h2{font:600 11px Calibri,"Segoe UI",sans-serif;margin:0 0 1.5mm}
 #printArea .pkpi table{width:auto;min-width:70mm}
 #printArea .pkpi td{border:0;padding:1px 10px 1px 0;font-size:9px}
-/* Haftalık plan çizelgesi: renkli hücreler çıktıda da dolu kalsın. */
-#printArea .pplan td.pcell{text-align:center;font-weight:700;font-size:8px;text-transform:uppercase;
-  -webkit-print-color-adjust:exact;print-color-adjust:exact}
 #printArea table.kap td,#printArea table.kap th{font-size:7px;padding:1px 2px;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* Çok sütunlu iş emri çizelgesi: punto buildPrint içinde sütun sayısına göre hesaplanır. */
 #printArea table.gen th,#printArea table.gen td{padding:1px 2px}
 #printArea table.gen th{font-size:.93em}
-/* Çizelge Excel'deki gibi düzenli görünsün: satırlar asgari bir yüksekliği tutar,
-   içerik ortalanır; açıklama sütunu geniş olduğu için satırlar aşırı uzamaz. */
-#printArea .pplan tbody td{height:8mm;vertical-align:middle}
-#printArea .pplan .pbaslik{text-align:center;font-weight:700;font-size:11px;padding:2mm 0 1.5mm}
 /* Günlük verim tablosu. Tarayıcı arka plan rengini varsayılan olarak basmaz; verim renkleri
    kâğıda da çıksın diye renk ayarı zorlanır. Büyük harfler JS'te Türkçe kuralıyla yapılır:
    PDF'i çizen html2canvas CSS büyütmesinde "i"yi "I" yapıyor. */
@@ -535,6 +528,44 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 #printArea .vr-gruplu tbody tr:not(.vr-top) td{background:none}
 #printArea .vr-gruplu tbody tr.vr-grup td{border-top:.9pt solid #aab4bd}
 #printArea .vr-gruplu tbody tr:first-child td{border-top:0}
+/* Haftalık planlama çizelgesi: gün hücreleri aralarında beyaz derz olan karolar. Karo rengi
+   ürüne göre JS'te verilir; boş, arızalı ve bakımdaki makine sabit renkte. */
+#printArea .pp-t th.pp-no,#printArea .pp-t th.pp-gun{text-align:center}
+#printArea .pp-t th.pp-bugun{background:#217346}
+#printArea .pp-t td.pp-no{text-align:center;color:#76818b;font-weight:700}
+#printArea .pp-t td.pp-mak b{display:block;font-size:8px}
+#printArea .pp-t td.pp-not{font-size:6.6px;line-height:1.3;color:#3a4650}
+#printArea .pp-t td.pp-h{border:1.2pt solid #fff;padding:1mm 1.2mm;text-align:center;font-size:7.2px;line-height:1.2}
+#printArea .pp-t td.pp-h b{display:block;font-size:7.2px}
+#printArea .pp-t td.pp-h small{color:inherit;font-size:6.4px;font-weight:600;margin-top:.4mm}
+#printArea .pp-t td.pp-h.bos{background:#eef2f6;color:#8593a0;font-weight:600}
+#printArea .pp-t td.pp-h.arizali{background:#fde4e6;color:#9c0006;font-weight:700}
+#printArea .pp-t td.pp-h.bakim{background:#fff5d6;color:#9c5700;font-weight:700}
+#printArea .pp-t td.pp-h.cok{padding:0;vertical-align:top}
+#printArea .pp-is{padding:1mm 1.2mm;border-bottom:1.2pt solid #fff}
+#printArea .pp-is:last-child{border-bottom:0}
+#printArea .vr .pp-nokta{display:inline-block;width:1.4mm;height:1.4mm;border-radius:50%;background:#217346;
+  margin-right:.8mm;vertical-align:.15mm;border:0}
+#printArea .vr-alt i.pp-o-is{background:linear-gradient(90deg,hsl(140 62% 88%),hsl(210 62% 88%) 50%,hsl(30 62% 88%))}
+#printArea .vr-alt i.pp-o-bos{background:#eef2f6;border:.6pt solid #8593a0}
+#printArea .vr-alt i.pp-o-ariza{background:#fde4e6;border:.6pt solid #9c0006}
+#printArea .vr-alt i.pp-o-bakim{background:#fff5d6;border:.6pt solid #9c5700}
+#printArea .vr.sik1 .vr-bas{padding-bottom:1.2mm;margin-bottom:2mm}
+#printArea .vr.sik1 h1{font-size:14px}
+#printArea .vr.sik1 .vr-kpi{margin-bottom:2mm}
+#printArea .vr.sik1 .vr-k{padding:1.1mm 2mm}
+#printArea .vr.sik1 .vr-k b{font-size:12px;margin-top:.4mm}
+#printArea .vr.sik1 .pp-t th{padding:1.1mm 1mm}
+#printArea .vr.sik1 .pp-t td{padding:.7mm 1mm}
+#printArea .vr.sik1 .pp-t td.pp-h{padding:.6mm .8mm}
+#printArea .vr.sik1 .pp-t td.pp-h.cok{padding:0}
+#printArea .vr.sik1 .pp-is{padding:.6mm .8mm}
+#printArea .vr.sik1 .pp-t td.pp-not{font-size:6.2px;line-height:1.2}
+#printArea .vr.sik1 .vr-alt{margin-top:1.5mm}
+#printArea .vr.sik2 .vr-k small{display:none}
+#printArea .vr.sik2 .pp-t td.pp-h,#printArea .vr.sik2 .pp-t td.pp-h b{font-size:6.6px}
+#printArea .vr.sik2 .pp-t td.pp-h small{font-size:6px;margin-top:.2mm}
+#printArea .vr.sik2 .pp-t td.pp-not{font-size:5.9px}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   html,body{background:#fff}
@@ -844,7 +875,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "67";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "68";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3042,57 +3073,92 @@ function planTable(sep){
   });
   return out.join("\n");
 }
-/* Birden çok işin düştüğü gün hücresi işler kadar yatay banda bölünür. */
-function planBaskiRenk(c){
-  const renk=p=>"hsl("+planHue(planAd(p.o))+" 46% 84%)";
-  if(c.isler.length===1) return renk(c.isler[0]);
-  const n=c.isler.length;
-  return "linear-gradient(to bottom,"+c.isler.map((p,k)=>renk(p)+" "+(k/n*100)+"% "+((k+1)/n*100)+"%").join(",")+")";
-}
+/* Haftalık planlama çizelgesinin çıktısı: ekrandaki çizelgenin bilgileri, verim tablolarıyla
+   aynı görünümde. Üstte haftanın özeti; gün hücreleri ürüne göre pastel karolar, birden çok
+   işin düştüğü gün üst üste bantlara bölünür. Son bant hücrenin kalanını kendi rengiyle doldurur. */
 function buildPrintPlan(){
   const rows=planRows(planWS), P=$("#printArea"); P.innerHTML="";
-  const box=el("div","pplan");
-  box.appendChild(el("div","pbaslik","HAFTALIK ÜRETİM PLANLAMA ÇİZELGESİ (HAFTA "+haftaNo(planWS)+")"));
-  box.appendChild(el("p","pmeta",trDate(planWS)+" – "+trDate(addDays(planWS,5))));
-  const tbl=el("table"), th=el("thead"), htr=el("tr");
-  /* Sıra no dar, açıklama geniş: dar açıklama sütunu satırları gereksiz yere uzatıyordu. */
-  const paylar=[4,9,13].concat(PLAN_GUN.map(()=>11)).concat([21]);
-  const toplam=paylar.reduce((a,b)=>a+b,0), cg=el("colgroup");
-  paylar.forEach(w=>{ const c=document.createElement("col"); c.style.width=(w/toplam*100).toFixed(3)+"%"; cg.appendChild(c); });
-  tbl.appendChild(cg);
-  ["Sıra No","Makine Kodu","Makine Adı"].concat(PLAN_GUN).concat(["Açıklama"])
-    .forEach(x=>htr.appendChild(el("th",null,x)));
-  th.appendChild(htr); tbl.appendChild(th);
-  const tb=el("tbody");
+  const isler=new Set(); let dolu=0, adet=0;
+  rows.forEach(r=>r.cells.forEach(c=>{
+    if(c.tip!=="is") return;
+    dolu++; c.isler.forEach(p=>{ isler.add(p.o); adet+=p.adet; });
+  }));
+  const say=d=>rows.filter(r=>r.durum===d).length, ar=say("arizali"), bk=say("bakim");
+  const isli=rows.filter(r=>r.cells.some(c=>c.tip==="is")).length, hucre=rows.length*PLAN_GUN.length;
+  const kok=vrKok("Haftalık Üretim Planlama Çizelgesi","","Hafta "+haftaNo(planWS),
+    trDate(planWS)+" – "+trDate(addDays(planWS,PLAN_GUN.length-1)),[
+    {ad:"Makine", deger:fmt(rows.length),
+      alt:[fmt(rows.length-ar-bk)+" çalışıyor", ar&&fmt(ar)+" arızalı", bk&&fmt(bk)+" bakımda"].filter(Boolean).join(" · ")},
+    {ad:"İş planlanan makine", deger:fmt(isli)+" / "+fmt(rows.length), alt:"hafta içinde en az bir gün"},
+    {ad:"Plan doluluğu", deger:hucre?pctS(dolu/hucre):"—", alt:fmt(dolu)+" / "+fmt(hucre)+" makine-gün dolu"},
+    {ad:"Planlanan iş emri", deger:fmt(isler.size), alt:"bu hafta makinelerde"},
+    {ad:"Girilen üretim", deger:adet?fmt(adet)+" adet":"—", alt:"haftanın üretim girilen günleri"}
+  ]);
+  const bugun=todayISO();
+  const {tablo,tb}=vrTablo([["No",22,"pp-no"],["Makine",116]]
+    .concat(PLAN_GUN.map((g,i)=>{ const gun=addDays(planWS,i);
+      return [[g,trDate(gun).slice(0,5)],112,"pp-gun"+(gun===bugun?" pp-bugun":"")]; }))
+    .concat([["Açıklama",252]]),"pp-t");
+  const yaz=(kutu,p)=>{
+    kutu.appendChild(el("b",null,planAd(p.o)));
+    const alt=[];
+    if(p.top) alt.push(p.gun+"/"+p.top+". gün"); else if(p.gun) alt.push(p.gun+". gün");
+    if(p.adet) alt.push(fmt(p.adet)+" adet");
+    if(!alt.length) return;
+    const s=el("small"); if(p.ger) s.appendChild(el("i","pp-nokta"));
+    s.appendChild(document.createTextNode(alt.join(" · "))); kutu.appendChild(s);
+  };
+  const boya=(kutu,p)=>{ const h=planHue(planAd(p.o));
+    kutu.style.background="hsl("+h+" 62% 92%)"; kutu.style.color="hsl("+h+" 48% 24%)"; };
   rows.forEach(r=>{
-    const tr=el("tr");
-    tr.appendChild(td(String(r.no))); tr.appendChild(td(r.kod));
-    tr.appendChild(td((r.ad||"")+(r.tip?" "+r.tip:"")));
+    const tr=el("tr"), m=el("td","pp-mak");
+    tr.appendChild(el("td","pp-no",String(r.no)));
+    m.appendChild(el("b",null,(r.ad||r.kod)+(r.tip?" "+r.tip:"")));
+    if(r.ad && r.kod!==r.ad) m.appendChild(el("small",null,r.kod));
+    tr.appendChild(m);
     r.cells.forEach(c=>{
-      const cell=el("td","pcell",planHucreTam(c));
-      cell.style.background = c.tip==="is" ? planBaskiRenk(c)
-        : c.tip==="arizali" ? "#d32020" : c.tip==="bakim" ? "#e0a300" : "#4a90d9";
-      if(c.tip==="arizali"||c.tip==="bos") cell.style.color="#fff";
-      tr.appendChild(cell);
+      const cok=c.tip==="is" && c.isler.length>1, d=el("td","pp-h "+(cok?"cok":c.tip));
+      if(cok){
+        c.isler.forEach(p=>{ const k=el("div","pp-is"); boya(k,p); yaz(k,p); d.appendChild(k); });
+        boya(d,c.isler[c.isler.length-1]);
+      }
+      else if(c.tip==="is"){ boya(d,c.isler[0]); yaz(d,c.isler[0]); }
+      else d.appendChild(el("span",null,{bos:"Makine boş",arizali:"Makine arızalı",bakim:"Makine bakımda"}[c.tip]));
+      tr.appendChild(d);
     });
-    tr.appendChild(td(planNot(r)||planAciklama(r)));
+    tr.appendChild(el("td","pp-not",planNot(r)||planAciklama(r)));
     tb.appendChild(tr);
   });
-  tbl.appendChild(tb); box.appendChild(tbl); P.appendChild(box);
-  planSatirEsitle(tbl,P);
+  kok.appendChild(tablo);
+  const alt=el("div","vr-alt");
+  [["pp-o-is","Planlanan iş · renk ürüne göre"],["pp-nokta","Üretim girilmiş gün"],
+   ["pp-o-bos","Makine boş"],["pp-o-ariza","Arızalı"],["pp-o-bakim","Bakımda"]].forEach(([k,ad])=>{
+    const x=el("span"); x.appendChild(el("i",k)); x.appendChild(document.createTextNode(ad)); alt.appendChild(x); });
+  alt.appendChild(el("span","vr-not","“3/13. gün”: işin kaçıncı günü / toplam süresi"));
+  kok.appendChild(alt);
+  P.appendChild(kok);
+  planSigdir(kok,P);
+  planSatirEsitle(tablo,P);
+}
+/* Çizelge tek sayfaya sığmazsa önce boşluklar ve punto, gerekirse kartların alt satırı küçülür. */
+const PLAN_KAGIT=733;                   /* yatay A4'te 8mm kenarla kalan yükseklik, piksel */
+function planSigdir(kok,P){
+  const acikti=document.body.classList.contains("pdfyap");
+  if(!acikti) document.body.classList.add("pdfyap");
+  ["sik1","sik2"].forEach(k=>{ if(P.getBoundingClientRect().height>PLAN_KAGIT) kok.classList.add(k); });
+  if(!acikti) document.body.classList.remove("pdfyap");
 }
 /* Çizelgenin bölmeleri eşit görünsün: bütün satırlar en uzun satır kadar olur. Ölçüm için
    çıktı kâğıt eninde geçici olarak ekran dışına alınır. Eşitleme sayfayı taşıracaksa
    vazgeçilir, tek sayfada kalmak satır eşitliğinden önemli. */
 function planSatirEsitle(tbl,P){
-  const KAGIT=733;                      /* yatay A4'te 8mm kenarla kalan yükseklik, piksel */
   const acikti=document.body.classList.contains("pdfyap");
   if(!acikti) document.body.classList.add("pdfyap");
   const satirlar=Array.prototype.slice.call(tbl.querySelectorAll("tbody tr"));
   let en=0;
   satirlar.forEach(tr=>{ en=Math.max(en,tr.getBoundingClientRect().height); });
   satirlar.forEach(tr=>{ tr.style.height=Math.ceil(en)+"px"; });
-  if(P.getBoundingClientRect().height>KAGIT) satirlar.forEach(tr=>{ tr.style.height=""; });
+  if(P.getBoundingClientRect().height>PLAN_KAGIT) satirlar.forEach(tr=>{ tr.style.height=""; });
   if(!acikti) document.body.classList.remove("pdfyap");
 }
 
