@@ -512,6 +512,29 @@ td.kap-yil,th.kap-yil{font-weight:700;border-right:2px solid var(--line)}
 #printArea .vr-alt i.iyi{background:#c6efce;border:.6pt solid #006100}
 #printArea .vr-alt i.orta{background:#ffeb9c;border:.6pt solid #9c5700}
 #printArea .vr-alt i.dusuk{background:#ffc7ce;border:.6pt solid #9c0006}
+#printArea .vr-alt .vr-not{margin-left:auto;font-style:italic}
+/* Aylık iş emri tablosu: durum rozeti ve plan gerçekleşme çubuğu. */
+#printArea .vr-dr{display:inline-block;padding:.3mm 1.4mm;border-radius:1mm;font-size:7.2px;font-weight:700;white-space:nowrap}
+#printArea .vr-dr.tamam{background:#e2f5e6;color:#006100}
+#printArea .vr-dr.devam{background:#e3eefa;color:#1f5f99}
+#printArea .vr-dr.bos{background:#eceff1;color:#5b6670}
+#printArea .vr-t td.vr-bar{white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
+#printArea .vr-bar-i{display:inline-block;width:46%;height:1.6mm;margin-right:1.2mm;vertical-align:middle;
+  border-radius:.8mm;background:#e3e8ec;overflow:hidden}
+#printArea .vr-bar-i i{display:block;height:100%;background:#5b8db8}
+#printArea .vr-bar-i i.tam{background:#217346}
+/* Haftalık tablo: gün hücresi adet ve o günün verimi; satırlar makineye göre öbeklenir. */
+#printArea .vr-t th small{display:block;font-size:6.6px;font-weight:400;color:#c9d2da;margin-top:.3mm}
+#printArea .vr-t th.vr-g{text-align:center}
+#printArea .vr-t td.vr-g{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+#printArea .vr-t td.vr-g small{margin-top:0}
+#printArea .vr-t td.vr-g.iyi{background:#c6efce;color:#006100}
+#printArea .vr-t td.vr-g.orta{background:#ffeb9c;color:#9c5700}
+#printArea .vr-t td.vr-g.dusuk{background:#ffc7ce;color:#9c0006}
+#printArea .vr-t td.vr-g.iyi small,#printArea .vr-t td.vr-g.orta small,#printArea .vr-t td.vr-g.dusuk small{color:inherit;font-weight:600}
+#printArea .vr-gruplu tbody tr:not(.vr-top) td{background:none}
+#printArea .vr-gruplu tbody tr.vr-grup td{border-top:.9pt solid #aab4bd}
+#printArea .vr-gruplu tbody tr:first-child td{border-top:0}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   html,body{background:#fff}
@@ -578,6 +601,8 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
         <button class="btn sm" id="mNow">Bu ay</button>
       </span>
       <span class="spacer"></span>
+      <button class="btn sm" id="oXlsx" hidden>Verim tablosu · Excel</button>
+      <button class="btn sm" id="oPdf">Verim tablosu · PDF</button>
       <span class="count" id="oCount"></span>
       <button class="btn sm" id="btnDelRow">Satırı sil</button>
       <button class="btn sm danger" id="btnClear2">Boşalt</button>
@@ -652,6 +677,8 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
         <button class="btn sm" id="plNow">Bu hafta</button>
       </span>
       <span class="spacer"></span>
+      <button class="btn sm" id="plXlsx" hidden>Verim tablosu · Excel</button>
+      <button class="btn sm" id="plPdf">Verim tablosu · PDF</button>
       <span class="count" id="plCount"></span>
     </div>
     <div class="panel plan-panel">
@@ -817,7 +844,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
 const SEED = JSON.parse(document.getElementById("seed").textContent);
 const KEY = "uretim-takip-2025-v1";
 const SEED_VER = 2;
-const BUILD = "66";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
+const BUILD = "67";   // her yayında artar; ekranda görünür, kimin hangi sürümde olduğunu ayırt etmek için   // ürün listesi sürümü; artınca kayıtlı liste kendiliğinden yenilenir
 const nf = new Intl.NumberFormat("tr-TR");
 const nf1 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:1});
 const nf2 = new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2233,16 +2260,50 @@ function gunlukOzet(list,date){
   return t;
 }
 /* KPI kartları: ekranda, PDF'te ve Excel'de aynı ad ve değerle. z, Excel'deki sayı biçimi. */
-function gunlukKpi(t){
+/* KPI kartları: ekranda, PDF'te ve Excel'de aynı ad ve değerle. z, Excel'deki sayı biçimi.
+   D dönemi adlandırır: aylık ve haftalık tablo da aynı kartları kendi adıyla kullanır. */
+const GUN_D={ad:"Günlük", ek:"bu güne", teorik:"adet · kalıp göz ve teorik çevrimle 24 saat"};
+function gunlukKpi(t,D){
+  D=D||GUN_D;
+  const kucuk=D.ad.toLocaleLowerCase("tr");
   return [
-    {ad:"Günlük teorik üretim", deger:fmt(Math.round(t.teorik)), alt:"adet · kalıp göz ve teorik çevrimle 24 saat", n:Math.round(t.teorik), z:"#,##0"},
-    {ad:"Günlük gerçekleşen üretim", deger:fmt(t.uretim), alt:"adet", n:t.uretim, z:"#,##0"},
-    {ad:"Günlük üretim verimi", deger:t.teorik?pctS(t.verim):"—", alt:"gerçekleşen / teorik", n:t.teorik?t.verim:"", z:"0.0%", renk:verimSinif(t.verim)},
-    {ad:"Ortalama çevrim performansı", deger:t.perfN?pctS(t.perf):"—", alt:"teorik çevrim / gerçekleşen çevrim", n:t.perfN?t.perf:"", z:"0.0%", renk:verimSinif(t.perf)},
-    {ad:"Toplam duruş", deger:t.durus?fmt1(t.durus)+" saat":"Yok", alt:"bu güne girilen duruşlar", n:t.durus, z:'0.0" saat";;"Yok"'},
-    {ad:"Hatalı üretim", deger:t.hata?fmt(t.hata)+" adet":"Yok", alt:t.uretim?pctS(t.hata/t.uretim)+" · günlük üretime oran":"bu güne girilen hatalılar", n:t.hata, z:'#,##0" adet";;"Yok"'},
-    {ad:"Toplam çalışma", deger:fmt2(t.saat), alt:"saat (gerçekleşen kapasiteye göre)", n:t.saat, z:'0.00" saat"'}
+    {k:"teorik", ad:D.ad+" teorik üretim", deger:fmt(Math.round(t.teorik)), alt:D.teorik, n:Math.round(t.teorik), z:"#,##0"},
+    {k:"uretim", ad:D.ad+" gerçekleşen üretim", deger:fmt(t.uretim), alt:"adet", n:t.uretim, z:"#,##0"},
+    {k:"verim", ad:D.ad+" üretim verimi", deger:t.teorik?pctS(t.verim):"—", alt:"gerçekleşen / teorik", n:t.teorik?t.verim:"", z:"0.0%", renk:verimSinif(t.verim)},
+    {k:"perf", ad:"Ortalama çevrim performansı", deger:t.perfN?pctS(t.perf):"—", alt:"teorik çevrim / gerçekleşen çevrim", n:t.perfN?t.perf:"", z:"0.0%", renk:verimSinif(t.perf)},
+    {k:"durus", ad:"Toplam duruş", deger:t.durus?fmt1(t.durus)+" saat":"Yok", alt:D.ek+" girilen duruşlar", n:t.durus, z:'0.0" saat";;"Yok"'},
+    {k:"hata", ad:"Hatalı üretim", deger:t.hata?fmt(t.hata)+" adet":"Yok", alt:t.uretim?pctS(t.hata/t.uretim)+" · "+kucuk+" üretime oran":D.ek+" girilen hatalılar", n:t.hata, z:'#,##0" adet";;"Yok"'},
+    {k:"saat", ad:"Toplam çalışma", deger:fmt2(t.saat), alt:"saat (gerçekleşen kapasiteye göre)", n:t.saat, z:'0.00" saat"'}
   ];
+}
+/* Dönem verimi (ay ya da hafta): günlük tablonun gün gün toplamı, tanımlar aynı. Teorik
+   üretim yalnız üretim girilen günlerden toplanır; duruşla geçen gün verimi düşürmez,
+   duruş ayrıca gösterilir. Çevrim performansı iş emri başına bir kez ortalamaya girer. */
+function donemOzet(list,gunler){
+  const t={satir:[],teorik:0,uretim:0,verimPay:0,saat:0,perfTop:0,perfN:0,durus:0,hata:0,gun:{}};
+  gunler.forEach(g=>{ t.gun[g]={uretim:0,teorik:0,verimPay:0,durus:0,hata:0}; });
+  list.forEach(o=>{
+    const c=calc(o), s={o:o,c:c,v:0,teorik:0,verimPay:0,dur:0,hat:0,gunSay:0,gun:{}};
+    gunler.forEach(g=>{
+      const v=n0(o.days[g]), dur=n0(durOf(o,g)), hat=n0(hatOf(o,g));
+      if(!(v||dur||hat)) return;
+      const R=v&&c.R?c.R:0, G=t.gun[g];
+      s.v+=v; s.dur+=dur; s.hat+=hat; s.teorik+=R; if(R) s.verimPay+=v; if(v) s.gunSay++;
+      s.gun[g]={v:v,dur:dur,hat:hat,verim:R?v/R:0};
+      G.uretim+=v; G.teorik+=R; if(R) G.verimPay+=v; G.durus+=dur; G.hata+=hat;
+    });
+    s.kayit=!!(s.v||s.dur||s.hat);
+    s.verim=s.teorik?s.verimPay/s.teorik:0;
+    s.perf=s.v?c.cevrimPerf:0;
+    t.uretim+=s.v; t.teorik+=s.teorik; t.verimPay+=s.verimPay; t.durus+=s.dur; t.hata+=s.hat;
+    if(s.v&&c.Q) t.saat+=s.v/c.Q;
+    if(s.perf){ t.perfTop+=s.perf; t.perfN++; }
+    t.satir.push(s);
+  });
+  gunler.forEach(g=>{ const G=t.gun[g]; G.verim=G.teorik?G.verimPay/G.teorik:0; });
+  t.verim=t.teorik?t.verimPay/t.teorik:0;
+  t.perf=t.perfN?t.perfTop/t.perfN:0;
+  return t;
 }
 /* Ekrandaki makine ya da arama süzgeci çıktıda yazsın: süzülmüş tablo bütün fabrika sanılmasın. */
 function gunlukFiltre(){
@@ -3558,20 +3619,17 @@ const PRINT_LABEL={maliyetCevrim:"Maliyet çevrimi",calisVerim:"Çalışma verim
   plan:"Hedef adet",J:"Üretilen adet",pct:"Gerç. %",K:"Hedef saat",L:"Çalışılan saat",M:"Sapma",
   N:"Fazla Saat",durus:"Duruş",P:"Saatlik kapasite",Q:"Saatlik üretim",vardiya:"Vardiya (8 sa)",
   R:"Günlük kapasite",S:"Günlük üretim",hatali:"Hatalı",V:"Fire (kg)"};
-/* Günlük performans raporunun çıktısı: ekrandaki tablonun aynısı, girdi kutuları düz metne çevrilir. */
-/* Günlük verim tablosu çıktısı: o güne kaydı olan satırlar, üstte KPI kartları, altta toplam.
-   Verim ve çevrim performansı eşiğe göre boyanır. */
-function buildPrintDaily(){
-  const area=$("#printArea"); area.innerHTML="";
-  const date=$("#dDate").value, t=gunlukOzet(dailyRows(),date);
+/* Verim tablolarının ortak çıktı parçaları: başlık, KPI kartları, tablo iskeleti ve renk
+   açıklaması. Günlük, aylık iş emri ve haftalık tablo aynı görünümü bunlardan alır. */
+function vrKok(baslik,filtre,tarih,altTarih,kpiler){
   const kok=el("div","vr"), bas=el("div","vr-bas"), sol=el("div"), sag=el("div","vr-tarih");
   sol.appendChild(el("div","vr-marka","Novotech Üretim".toLocaleUpperCase("tr")));
-  sol.appendChild(el("h1",null,"Günlük Üretim Performans Raporu"));
-  const filtre=gunlukFiltre(); if(filtre) sol.appendChild(el("div","vr-filtre",filtre));
-  sag.appendChild(el("b",null,trDate(date))); sag.appendChild(el("span",null,gunAdi(date)));
+  sol.appendChild(el("h1",null,baslik));
+  if(filtre) sol.appendChild(el("div","vr-filtre",filtre));
+  sag.appendChild(el("b",null,tarih)); sag.appendChild(el("span",null,altTarih));
   bas.appendChild(sol); bas.appendChild(sag); kok.appendChild(bas);
   const kp=el("div","vr-kpi");
-  gunlukKpi(t).forEach(x=>{
+  kpiler.forEach(x=>{
     const d=el("div","vr-k"+(x.renk?" "+x.renk:""));
     d.appendChild(el("span",null,x.ad.toLocaleUpperCase("tr")));
     d.appendChild(el("b",null,x.deger));
@@ -3579,33 +3637,56 @@ function buildPrintDaily(){
     kp.appendChild(d);
   });
   kok.appendChild(kp);
-  /* Sütun payları yatay A4'ün ~1062 piksellik eninden; tabloya oranla dağıtılır. */
-  const KOL=[["İş Emri",74],["Ürün",150],["Makine",92],["Aktif / Toplam Göz",50,"r"],
-    ["Teorik Çevrim (sn)",54,"r"],["Gerçek Çevrim (sn)",54,"r"],["Günlük Teorik Üretim",70,"r"],
-    ["Günlük Üretim",70,"r"],["Hatalı (adet)",52,"r"],["Günlük Verim",70,"vr-p"],
-    ["Çevrim Performansı",70,"vr-p"],["Plan Gerçekleşme",62,"r"],["Duruş",194]];
+  return kok;
+}
+/* Sütun payları yatay A4'ün ~1062 piksellik eninden; tabloya oranla dağıtılır. Başlık
+   [ad, alt] biçiminde verilirse alt kısım küçük yazıyla ikinci satıra iner. */
+function vrTablo(KOL,sinif){
   const pay=KOL.reduce((a,k)=>a+k[1],0);
-  const tablo=el("table","vr-t"), cg=el("colgroup"), thead=el("thead"), htr=el("tr"), tb=el("tbody");
+  const tablo=el("table","vr-t"+(sinif?" "+sinif:"")), cg=el("colgroup"), thead=el("thead"), htr=el("tr"), tb=el("tbody");
   KOL.forEach(k=>{
     const c=document.createElement("col"); c.style.width=(k[1]/pay*100).toFixed(3)+"%"; cg.appendChild(c);
-    htr.appendChild(el("th",k[2]||null,k[0].toLocaleUpperCase("tr")));
+    const ad=[].concat(k[0]), th=el("th",k[2]||null,ad[0].toLocaleUpperCase("tr"));
+    if(ad[1]) th.appendChild(el("small",null,ad[1]));
+    htr.appendChild(th);
   });
-  tablo.appendChild(cg); thead.appendChild(htr); tablo.appendChild(thead);
-  const yuzde=x=>el("td","vr-p"+(x?" "+verimSinif(x):""),x?pctS(x):"—");
-  const sayi=(x,yaz)=>el("td","r",x?yaz(x):"—");
+  tablo.appendChild(cg); thead.appendChild(htr); tablo.appendChild(thead); tablo.appendChild(tb);
+  return {tablo:tablo, tb:tb};
+}
+function vrLejant(kok,not){
+  const alt=el("div","vr-alt");
+  alt.appendChild(el("span",null,"Renkler:"));
+  verimLejant().forEach(([k,ad])=>{ const x=el("span"); x.appendChild(el("i",k)); x.appendChild(document.createTextNode(ad)); alt.appendChild(x); });
+  if(not) alt.appendChild(el("span","vr-not",not));
+  kok.appendChild(alt);
+}
+const vrYuzde=x=>el("td","vr-p"+(x?" "+verimSinif(x):""),x?pctS(x):"—");
+const vrSayi=(x,yaz)=>el("td","r",x?yaz(x):"—");
+const vrHata=x=>el("td","r"+(x?" vr-hata":""),x?fmt(x):"—");
+const vrUrun=o=>{ const u=el("td"); u.appendChild(el("b",null,o.urun||"—")); if(o.kod) u.appendChild(el("small",null,o.kod)); return u; };
+/* Günlük verim tablosu çıktısı: o güne kaydı olan satırlar, üstte KPI kartları, altta toplam.
+   Verim ve çevrim performansı eşiğe göre boyanır. */
+function buildPrintDaily(){
+  const area=$("#printArea"); area.innerHTML="";
+  const date=$("#dDate").value, t=gunlukOzet(dailyRows(),date);
+  const kok=vrKok("Günlük Üretim Performans Raporu",gunlukFiltre(),trDate(date),gunAdi(date),gunlukKpi(t));
+  const {tablo,tb}=vrTablo([["İş Emri",74],["Ürün",150],["Makine",92],["Aktif / Toplam Göz",50,"r"],
+    ["Teorik Çevrim (sn)",54,"r"],["Gerçek Çevrim (sn)",54,"r"],["Günlük Teorik Üretim",70,"r"],
+    ["Günlük Üretim",70,"r"],["Hatalı (adet)",52,"r"],["Günlük Verim",70,"vr-p"],
+    ["Çevrim Performansı",70,"vr-p"],["Plan Gerçekleşme",68,"r"],["Duruş",188]]);
   t.satir.forEach(s=>{
     const o=s.o, c=s.c, b=durBilgi(o,date), tr=el("tr");
     tr.appendChild(el("td","vr-ie",o.ie||"—"));
-    const u=el("td"); u.appendChild(el("b",null,o.urun||"—")); if(o.kod) u.appendChild(el("small",null,o.kod)); tr.appendChild(u);
+    tr.appendChild(vrUrun(o));
     tr.appendChild(el("td",null,machineLabel(o.makine)));
     tr.appendChild(el("td","r",o.kgoz==null?"—":(o.cgoz==null?"—":fmt(o.cgoz))+" / "+fmt(o.kgoz)));
     tr.appendChild(el("td","r",o.cevrim==null?"—":fmt2(o.cevrim)));
     tr.appendChild(el("td","r",o.gcevrim==null?"—":fmt2(o.gcevrim)));
-    tr.appendChild(sayi(s.v&&c.R,x=>fmt(Math.round(x))));
-    tr.appendChild(sayi(s.v,fmt));
-    tr.appendChild(el("td","r"+(s.hat?" vr-hata":""),s.hat?fmt(s.hat):"—"));
-    tr.appendChild(yuzde(s.verim));
-    tr.appendChild(yuzde(s.perf));
+    tr.appendChild(vrSayi(s.v&&c.R,x=>fmt(Math.round(x))));
+    tr.appendChild(vrSayi(s.v,fmt));
+    tr.appendChild(vrHata(s.hat));
+    tr.appendChild(vrYuzde(s.verim));
+    tr.appendChild(vrYuzde(s.perf));
     tr.appendChild(el("td","r",n0(o.plan)?pctS(c.pct):"—"));
     const d=el("td");
     if(s.dur){ d.appendChild(el("b",null,fmt1(s.dur)+" saat")); d.appendChild(document.createTextNode(" · "+gunlukSebep(s,date))); }
@@ -3615,19 +3696,179 @@ function buildPrintDaily(){
     tb.appendChild(tr);
   });
   const top=el("tr","vr-top"), ad=el("td",null,"Toplam"); ad.colSpan=6; top.appendChild(ad);
-  top.appendChild(sayi(t.teorik,x=>fmt(Math.round(x))));
-  top.appendChild(sayi(t.uretim,fmt));
-  top.appendChild(el("td","r"+(t.hata?" vr-hata":""),t.hata?fmt(t.hata):"—"));
-  top.appendChild(yuzde(t.verim));
-  top.appendChild(yuzde(t.perf));
+  top.appendChild(vrSayi(t.teorik,x=>fmt(Math.round(x))));
+  top.appendChild(vrSayi(t.uretim,fmt));
+  top.appendChild(vrHata(t.hata));
+  top.appendChild(vrYuzde(t.verim));
+  top.appendChild(vrYuzde(t.perf));
   top.appendChild(el("td"));
   top.appendChild(el("td",null,t.durus?fmt1(t.durus)+" saat":"—"));
   tb.appendChild(top);
-  tablo.appendChild(tb); kok.appendChild(tablo);
-  const alt=el("div","vr-alt");
-  alt.appendChild(el("span",null,"Renkler:"));
-  verimLejant().forEach(([k,ad])=>{ const x=el("span"); x.appendChild(el("i",k)); x.appendChild(document.createTextNode(ad)); alt.appendChild(x); });
-  kok.appendChild(alt);
+  kok.appendChild(tablo); vrLejant(kok); area.appendChild(kok);
+}
+/* Aylık iş emri verim tablosu: İş Emirleri sekmesinde süzülen iş emirleri, ekrandaki sırayla.
+   Verim sütunları yalnız seçili ayın girişlerinden; plan gerçekleşmesi, durum ve tahmini
+   bitiş iş emrinin bütününden (ekrandaki tabloyla aynı) okunur. */
+const AY_D={ad:"Aylık", ek:"bu aya", teorik:"adet · üretim girilen günlerde 24 saat"};
+const HAFTA_D={ad:"Haftalık", ek:"bu haftaya", teorik:"adet · üretim girilen günlerde 24 saat"};
+const DURUM_SINIF={"Tamamlandı":"tamam","Devam ediyor":"devam","Başlamadı":"bos"};
+function isEmriFiltre(){
+  const f=[], m=$("#oMachine").value, q=$("#oSearch").value.trim(), st=$("#oStatus");
+  if(m) f.push("Makine: "+machineLabel(m));
+  if(st.value) f.push("Durum: "+st.options[st.selectedIndex].text);
+  if(q) f.push("Arama: “"+q+"”");
+  return f.join(" · ");
+}
+function isEmriOzet(){
+  const t=donemOzet(gridRows,daysOfMonth(monthKey));
+  t.durum={"Tamamlandı":0,"Devam ediyor":0,"Başlamadı":0};
+  t.plan=0; t.planUretim=0; t.J=0; t.kalan=0;
+  t.satir.forEach(s=>{
+    s.durum=durumAdi(s.o,s.c); t.durum[s.durum]++;
+    t.J+=s.c.J;
+    if(n0(s.o.plan)){ t.plan+=n0(s.o.plan); t.planUretim+=s.c.J; t.kalan+=s.c.kalan; }
+    /* Hız bilinmiyorsa calc bitişi "yarın" verir; tahmin yazılmaz. */
+    s.bitis = s.c.kalan && (s.c.gercekGun||s.c.hizGun||s.c.kalanGun) ? s.c.bitis : "";
+  });
+  t.pct=t.plan?t.planUretim/t.plan:0;
+  return t;
+}
+function isEmriKpi(t){
+  const D=t.durum;
+  return [
+    {ad:"İş emri", deger:fmt(t.satir.length), n:t.satir.length, z:"#,##0",
+      alt:fmt(D["Tamamlandı"])+" tamamlandı · "+fmt(D["Devam ediyor"])+" devam · "+fmt(D["Başlamadı"])+" başlamadı"},
+    {ad:"Plan gerçekleşme", deger:t.plan?pctS(t.pct):"—", alt:"toplam üretilen / planlanan", n:t.plan?t.pct:"", z:"0.0%"}
+  ].concat(gunlukKpi(t,AY_D).filter(x=>x.k!=="saat"));
+}
+function vrBar(x){
+  const d=el("td","vr-bar");
+  if(!x){ d.textContent="—"; return d; }
+  const b=el("span","vr-bar-i"), i=el("i",x>=1?"tam":null);
+  i.style.width=Math.min(100,x*100).toFixed(1)+"%";
+  b.appendChild(i); d.appendChild(b); d.appendChild(document.createTextNode(pctS(x)));
+  return d;
+}
+function buildPrintIsEmri(){
+  const area=$("#printArea"); area.innerHTML="";
+  const t=isEmriOzet();
+  const kok=vrKok("Aylık İş Emri Performans Raporu",isEmriFiltre(),monthLabel(monthKey),"aylık üretim ve verim",isEmriKpi(t));
+  const {tablo,tb}=vrTablo([["İş Emri",66],["Ürün",134],["Makine",90],["Durum",70],
+    ["Planlanan",56,"r"],["Toplam Üretilen",60,"r"],["Plan Gerçekleşme",90],
+    ["Aylık Üretim",58,"r"],["Aylık Teorik Üretim",64,"r"],["Aylık Verim",58,"vr-p"],
+    ["Çevrim Performansı",62,"vr-p"],["Üretim Günü",44,"r"],["Duruş (saat)",46,"r"],
+    ["Hatalı (adet)",48,"r"],["Tahmini Bitiş",58,"r"]]);
+  t.satir.forEach(s=>{
+    const o=s.o, c=s.c, tr=el("tr"), d=el("td");
+    tr.appendChild(el("td","vr-ie",o.ie||"—"));
+    tr.appendChild(vrUrun(o));
+    tr.appendChild(el("td",null,o.makine?machineLabel(o.makine):"—"));
+    d.appendChild(el("span","vr-dr "+DURUM_SINIF[s.durum],s.durum)); tr.appendChild(d);
+    tr.appendChild(vrSayi(n0(o.plan),fmt));
+    tr.appendChild(vrSayi(c.J,fmt));
+    tr.appendChild(vrBar(n0(o.plan)?c.pct:0));
+    tr.appendChild(vrSayi(s.v,fmt));
+    tr.appendChild(vrSayi(s.teorik,x=>fmt(Math.round(x))));
+    tr.appendChild(vrYuzde(s.verim));
+    tr.appendChild(vrYuzde(s.perf));
+    tr.appendChild(vrSayi(s.gunSay,fmt));
+    tr.appendChild(vrSayi(s.dur,fmt1));
+    tr.appendChild(vrHata(s.hat));
+    tr.appendChild(el("td","r",s.bitis?trDate(s.bitis):"—"));
+    tb.appendChild(tr);
+  });
+  const top=el("tr","vr-top"), ad=el("td",null,"Toplam · "+fmt(t.satir.length)+" iş emri"); ad.colSpan=4; top.appendChild(ad);
+  top.appendChild(vrSayi(t.plan,fmt));
+  top.appendChild(vrSayi(t.J,fmt));
+  top.appendChild(vrBar(t.pct));
+  top.appendChild(vrSayi(t.uretim,fmt));
+  top.appendChild(vrSayi(t.teorik,x=>fmt(Math.round(x))));
+  top.appendChild(vrYuzde(t.verim));
+  top.appendChild(vrYuzde(t.perf));
+  top.appendChild(el("td"));
+  top.appendChild(vrSayi(t.durus,fmt1));
+  top.appendChild(vrHata(t.hata));
+  top.appendChild(el("td"));
+  tb.appendChild(top);
+  kok.appendChild(tablo);
+  vrLejant(kok,"Verim ve duruş yalnız "+monthLabel(monthKey)+" girişlerinden; plan gerçekleşmesi iş emrinin tamamından.");
+  area.appendChild(kok);
+}
+/* Haftalık verim tablosu: Pazartesi–Cumartesi, Pazar'a giriş yapılmışsa o da. Satır, o hafta
+   üretim, duruş ya da hatalı girilen iş emridir; makineler Makineler sekmesindeki sırayla. */
+const GUN_KISA=["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
+function haftaGunleri(){
+  const g=[]; for(let i=0;i<7;i++) g.push(addDays(planWS,i));
+  const paz=g[6];
+  if(!S.orders.some(o=>n0(o.days[paz])||n0(durOf(o,paz))||n0(hatOf(o,paz)))) g.pop();
+  return g;
+}
+function haftaOzet(){
+  const gunler=haftaGunleri(), t=donemOzet(S.orders,gunler);
+  const sira=new Map(machineItems(false).map((m,i)=>[m.kod,i]));
+  const yer=o=>sira.has(o.makine)?sira.get(o.makine):1e9;
+  t.gunler=gunler;
+  t.satir=t.satir.filter(s=>s.kayit)
+    .sort((a,b)=>yer(a.o)-yer(b.o)||String(a.o.ie||"").localeCompare(String(b.o.ie||""),"tr"));
+  t.makine=new Set(t.satir.filter(s=>s.v).map(s=>s.o.makine||"")).size;
+  return t;
+}
+function haftaKpi(t){
+  const say=d=>S.machines.filter(m=>m.durum===d).length, ar=say("arizali"), bk=say("bakim"), alt=[];
+  if(ar) alt.push(fmt(ar)+" arızalı"); if(bk) alt.push(fmt(bk)+" bakımda");
+  const deger=fmt(t.makine)+" / "+fmt(machineItems(false).length);
+  return [{ad:"Üretim yapan makine", deger:deger, n:deger, alt:alt.length?"şu an "+alt.join(" · "):"makine"}]
+    .concat(gunlukKpi(t,HAFTA_D).filter(x=>x.k!=="saat"));
+}
+function buildPrintHafta(){
+  const area=$("#printArea"); area.innerHTML="";
+  const t=haftaOzet(), G=t.gunler;
+  const kok=vrKok("Haftalık Üretim Verim Tablosu","","Hafta "+haftaNo(planWS),
+    trDate(G[0])+" – "+trDate(G[G.length-1]),haftaKpi(t));
+  const {tablo,tb}=vrTablo([["Makine",104],["İş Emri",62],["Ürün",136]]
+    .concat(G.map((g,i)=>[[GUN_KISA[i],trDate(g).slice(0,5)],G.length>6?54:60,"vr-g"]))
+    .concat([["Haftalık Üretim",62,"r"],["Haftalık Teorik",62,"r"],["Haftalık Verim",56,"vr-p"],
+      ["Çevrim Perf.",56,"vr-p"],["Duruş (saat)",46,"r"],["Hatalı (adet)",46,"r"]]),"vr-gruplu");
+  /* Gün hücresi: üretilen adet ve altında o günün verimi; yalnız duruş girilmişse duruş saati. */
+  const gun=(v,verim,dur)=>{
+    const d=el("td","vr-g"+(v&&verim?" "+verimSinif(verim):""));
+    if(v){ d.appendChild(el("b",null,fmt(v))); if(verim) d.appendChild(el("small",null,pctS(verim))); }
+    else if(dur) d.appendChild(el("small",null,"Duruş "+fmt1(dur)+" sa"));
+    else d.textContent="—";
+    return d;
+  };
+  let onceki;
+  t.satir.forEach(s=>{
+    const o=s.o, yeni=o.makine!==onceki, tr=el("tr",yeni?"vr-grup":null), m=el("td");
+    onceki=o.makine;
+    if(yeni){
+      const mk=machineByKod(o.makine);
+      m.appendChild(el("b",null,mk?(mk.ad||mk.kod):(o.makine||"Makine seçilmemiş")));
+      if(mk&&mk.tip) m.appendChild(el("small",null,mk.tip));
+    }
+    tr.appendChild(m);
+    tr.appendChild(el("td","vr-ie",o.ie||"—"));
+    tr.appendChild(vrUrun(o));
+    G.forEach(g=>{ const x=s.gun[g]||{}; tr.appendChild(gun(x.v,x.verim,x.dur)); });
+    tr.appendChild(vrSayi(s.v,fmt));
+    tr.appendChild(vrSayi(s.teorik,x=>fmt(Math.round(x))));
+    tr.appendChild(vrYuzde(s.verim));
+    tr.appendChild(vrYuzde(s.perf));
+    tr.appendChild(vrSayi(s.dur,fmt1));
+    tr.appendChild(vrHata(s.hat));
+    tb.appendChild(tr);
+  });
+  const top=el("tr","vr-top"), ad=el("td",null,"Toplam"); ad.colSpan=3; top.appendChild(ad);
+  G.forEach(g=>{ const x=t.gun[g]; top.appendChild(gun(x.uretim,x.verim,x.durus)); });
+  top.appendChild(vrSayi(t.uretim,fmt));
+  top.appendChild(vrSayi(t.teorik,x=>fmt(Math.round(x))));
+  top.appendChild(vrYuzde(t.verim));
+  top.appendChild(vrYuzde(t.perf));
+  top.appendChild(vrSayi(t.durus,fmt1));
+  top.appendChild(vrHata(t.hata));
+  tb.appendChild(top);
+  kok.appendChild(tablo);
+  vrLejant(kok,"Gün hücresi: üretilen adet ve o günün verimi.");
   area.appendChild(kok);
 }
 function buildPrint(){
@@ -3695,9 +3936,17 @@ $("#btnEdit").addEventListener("click",()=>{
     setTimeout(()=>inp.focus(),0);
   });
 });
+/* Verim tablosu düğmeleri yazdırmayı bu bayrakla çağırır; Araçlar'daki Yazdır sekmenin kendi
+   çıktısını (iş emri listesi, plan çizelgesi) verir. Günlük girişte ikisi de verim tablosudur. */
+let ciktiVerim=false;
 function ciktiHazirla(){
   if(view==="rapor"){ renderRapor(); buildPrintRapor(); return true; }
-  if(view==="plan"){ renderPlan(); buildPrintPlan(); return true; }
+  if(view==="plan"){
+    renderPlan();
+    if(!ciktiVerim){ buildPrintPlan(); return true; }
+    if(!haftaOzet().satir.length){ toast("Bu haftaya girilmiş kayıt yok"); return false; }
+    buildPrintHafta(); return true;
+  }
   if(view==="daily"){
     renderDaily();
     if(!gunlukOzet(dailyRows(),$("#dDate").value).satir.length){ toast("Bu güne girilmiş kayıt yok"); return false; }
@@ -3706,7 +3955,8 @@ function ciktiHazirla(){
   if(view!=="orders") setView("orders");
   renderOrders();
   if(!gridRows.length){ toast("Bu ayda yazdırılacak iş emri yok"); return false; }
-  buildPrint(); return true;
+  if(ciktiVerim) buildPrintIsEmri(); else buildPrint();
+  return true;
 }
 /* iOS'ta ana ekrana eklenen uygulamada window.print() sessizce hiçbir şey yapmaz. Orada
    çıktı PDF dosyasına çevrilir; iOS paylaşım ekranından kaydedilir ya da yazıcıya gider. */
@@ -3724,7 +3974,8 @@ function betikYukle(src){
   });
 }
 function pdfAdi(){
-  const ad={orders:"is-emirleri",daily:"gunluk-rapor",plan:"haftalik-plan",rapor:"faaliyet-raporu"}[view]||"cikti";
+  const ad=(ciktiVerim && {orders:"is-emri-verim",plan:"haftalik-verim"}[view])
+    || {orders:"is-emirleri",daily:"gunluk-rapor",plan:"haftalik-plan",rapor:"faaliyet-raporu"}[view] || "cikti";
   return "novotech-"+ad+"-"+String(yazdirAnahtar()).replace(/[^0-9A-Za-z-]/g,"")+".pdf";
 }
 function yazdirAnahtar(){
@@ -3790,12 +4041,13 @@ async function pdfCikti(){
     else document.documentElement.removeAttribute("data-theme");
   }
 }
-function yazdir(){
+function yazdir(verim){
+  ciktiVerim=verim;
   if(pwaModu()){ pdfCikti(); return; }
   if(ciktiHazirla()) window.print();
 }
-$("#btnPrint").addEventListener("click",yazdir);
-$("#dPdf").addEventListener("click",yazdir);
+$("#btnPrint").addEventListener("click",()=>yazdir(false));
+["#dPdf","#oPdf","#plPdf"].forEach(k=>$(k).addEventListener("click",()=>yazdir(true)));
 window.addEventListener("afterprint",()=>{ $("#printArea").innerHTML=""; });
 /* Günlük rapor sekmesinin pano kopyası: ekranda görünen tabloyla aynı, duruş sebebi dâhil. */
 function gunlukTable(sep){
@@ -4015,83 +4267,69 @@ $("#btnXlsx").addEventListener("click",()=>{
     toast("Excel dosyası indirildi");
   }catch(e){ toast("Excel dosyası oluşturulamadı"); }
 });
-/* Günlük verim tablosu Excel'i: PDF'teki satırlar ve renkler, sayılar hesaplanabilir hâlde.
+/* Verim tablolarının Excel'i: PDF'teki satırlar ve renkler, sayılar hesaplanabilir hâlde.
    Renkler Excel'in kendi iyi / nötr / kötü hücre stillerinden. */
 const XL_RENK={iyi:["C6EFCE","006100"],orta:["FFEB9C","9C5700"],dusuk:["FFC7CE","9C0006"]};
-function verimSayfa(t,date){
-  const kenar={style:"thin",color:{rgb:"D5DBE0"}};
-  const st=o=>{
-    const s={font:{name:"Calibri",sz:o.sz||10,bold:!!o.kalin,color:{rgb:o.yazi||"1D2329"}},
-      alignment:{vertical:"center",horizontal:o.yatay||"left",wrapText:!!o.sar}};
-    if(!o.kenarsiz) s.border={top:o.ust||kenar,bottom:kenar,left:kenar,right:kenar};
-    if(o.zemin) s.fill={patternType:"solid",fgColor:{rgb:o.zemin}};
-    if(o.z) s.numFmt=o.z;
-    return s;
-  };
-  const h=(v,o)=>({v:v==null?"":v,t:typeof v==="number"?"n":"s",s:st(o||{})});
-  const renkli=(x,o)=>{ const r=XL_RENK[verimSinif(x)];
-    return Object.assign({yatay:"center",z:"0.0%"},o,r?{zemin:r[0],yazi:r[1],kalin:1}:{}); };
-  const KOL=[
-    ["İş Emri",12,s=>s.o.ie||"",{kalin:1}],
-    ["Stok Kodu",12,s=>s.o.kod||""],
-    ["Ürün",28,s=>s.o.urun||"",{sar:1}],
-    ["Makine",20,s=>machineLabel(s.o.makine),{sar:1}],
-    ["Toplam Göz",8,s=>s.o.kgoz==null?"":n0(s.o.kgoz),{yatay:"right"}],
-    ["Kapalı Göz",8,s=>s.o.cgoz==null?"":s.c.kapaliGoz||"",{yatay:"right"}],
-    ["Aktif Göz",8,s=>s.o.cgoz==null?"":n0(s.o.cgoz),{yatay:"right"}],
-    ["Teorik Çevrim (sn)",10,s=>s.o.cevrim==null?"":n0(s.o.cevrim),{yatay:"right",z:"0.00"}],
-    ["Gerçek Çevrim (sn)",10,s=>s.o.gcevrim==null?"":n0(s.o.gcevrim),{yatay:"right",z:"0.00"}],
-    ["Günlük Teorik Üretim",12,s=>s.v&&s.c.R?Math.round(s.c.R):"",{yatay:"right",z:"#,##0"}],
-    ["Günlük Üretim",12,s=>s.v||"",{yatay:"right",z:"#,##0"}],
-    ["Hatalı (adet)",9,s=>s.hat||"",{yatay:"right",z:"#,##0",hata:1}],
-    ["Günlük Verim",10,s=>s.verim||"",{verim:1}],
-    ["Çevrim Performansı",12,s=>s.perf||"",{verim:1}],
-    ["Plan Gerçekleşme",12,s=>n0(s.o.plan)?s.c.pct:"",{yatay:"right",z:"0.0%"}],
-    ["Duruş (saat)",9,s=>s.dur||"",{yatay:"right"}],
-    ["Duruş Sebebi",16,s=>gunlukSebep(s,date)],
-    ["Duruş Notu",32,s=>durBilgi(s.o,date).n||"",{sar:1}]
-  ];
+const XL_KENAR={style:"thin",color:{rgb:"D5DBE0"}};
+const XL_TOPLAM={zemin:"E8EDF1",kalin:1,ust:{style:"medium",color:{rgb:"2E3B47"}}};
+function xlStil(o){
+  const s={font:{name:"Calibri",sz:o.sz||10,bold:!!o.kalin,color:{rgb:o.yazi||"1D2329"}},
+    alignment:{vertical:"center",horizontal:o.yatay||"left",wrapText:!!o.sar}};
+  if(!o.kenarsiz) s.border={top:o.ust||XL_KENAR,bottom:XL_KENAR,left:XL_KENAR,right:XL_KENAR};
+  if(o.zemin) s.fill={patternType:"solid",fgColor:{rgb:o.zemin}};
+  if(o.z) s.numFmt=o.z;
+  return s;
+}
+const xlH=(v,o)=>({v:v==null?"":v,t:typeof v==="number"?"n":"s",s:xlStil(o||{})});
+/* Hücre x verimine göre boyanır; değer başka bir sayı (gün hücresindeki adet) olabilir. */
+const xlRenkli=(x,o)=>{ const r=XL_RENK[verimSinif(x)];
+  return Object.assign({yatay:"center",z:"0.0%"},o,r?{zemin:r[0],yazi:r[1],kalin:1}:{}); };
+/* Sayfa iskeleti: başlık, koyu başlık satırı, satırlar, toplam, altta KPI'lar ve renk açıklaması.
+   KOL: [başlık, genişlik, satırdan değer, seçenek]. Seçenekte verim:1 hücreyi kendi değerine,
+   renk:fn satırdan okunan verime göre boyar; hata:1 dolu hücreyi kırmızı yazar. toplam, sütun
+   sırasına göre değerler; {v,renk} verilirse renk verimiyle boyanır. */
+function xlVerimSayfa(baslik,altBaslik,KOL,satirlar,toplam,kpiler){
   const son=KOL.length-1, rows=[], merges=[], yuk=[];
-  const filtre=gunlukFiltre();
-  rows.push([h("Günlük Üretim Performans Raporu",{kenarsiz:1,sz:16,kalin:1})]); yuk[0]={hpt:26};
-  rows.push([h("Novotech Üretim · "+trDate(date)+" "+gunAdi(date)+(filtre?" · "+filtre:""),{kenarsiz:1,yazi:"5B6670"})]);
+  const hucre=(v,o,zemin,renk)=>{
+    if(o.verim) return xlH(v,xlRenkli(v,{zemin:zemin}));
+    if(renk!==undefined) return xlH(v,xlRenkli(renk,{zemin:zemin,z:o.z}));
+    if(o.hata && v) o=Object.assign({},o,{yazi:"B42318",kalin:1});
+    return xlH(v,o);
+  };
+  rows.push([xlH(baslik,{kenarsiz:1,sz:16,kalin:1})]); yuk[0]={hpt:26};
+  rows.push([xlH(altBaslik,{kenarsiz:1,yazi:"5B6670"})]);
   merges.push({s:{r:0,c:0},e:{r:0,c:son}},{s:{r:1,c:0},e:{r:1,c:son}});
   rows.push([]);
   const bas=rows.length;
-  rows.push(KOL.map(k=>h(k[0],{kalin:1,yazi:"FFFFFF",zemin:"2E3B47",yatay:"center",sar:1}))); yuk[bas]={hpt:34};
-  t.satir.forEach((s,i)=>{
+  rows.push(KOL.map(k=>xlH(k[0],{kalin:1,yazi:"FFFFFF",zemin:"2E3B47",yatay:"center",sar:1}))); yuk[bas]={hpt:34};
+  satirlar.forEach((s,i)=>{
     const zemin=i%2?"F6F8F9":null;
     rows.push(KOL.map(k=>{
-      const v=k[2](s), o=Object.assign({zemin:zemin},k[3]||{});
-      if(o.verim) return h(v,renkli(v,{zemin:zemin}));
-      if(o.hata && v) Object.assign(o,{yazi:"B42318",kalin:1});
-      return h(v,o);
+      const o=Object.assign({zemin:zemin},k[3]||{});
+      return hucre(k[2](s),o,zemin,o.renk?o.renk(s):undefined);
     }));
   });
-  const ust={style:"medium",color:{rgb:"2E3B47"}}, tz={zemin:"E8EDF1",kalin:1,ust:ust};
-  const toplam=KOL.map(()=>h("",tz));
-  toplam[0]=h("Toplam",tz);
-  toplam[9]=h(t.teorik?Math.round(t.teorik):"",Object.assign({yatay:"right",z:"#,##0"},tz));
-  toplam[10]=h(t.uretim||"",Object.assign({yatay:"right",z:"#,##0"},tz));
-  toplam[11]=h(t.hata||"",Object.assign({yatay:"right",z:"#,##0"},tz,t.hata?{yazi:"B42318"}:{}));
-  toplam[12]=h(t.verim||"",renkli(t.verim,tz));
-  toplam[13]=h(t.perf||"",renkli(t.perf,tz));
-  toplam[15]=h(t.durus||"",Object.assign({yatay:"right"},tz));
-  rows.push(toplam);
-  const filtreSon=rows.length-2;
+  const filtreSon=rows.length-1;
+  rows.push(KOL.map((k,i)=>{
+    const x=toplam[i], o=Object.assign({},k[3]||{},XL_TOPLAM), kutu=x&&typeof x==="object";
+    if(o.verim) return xlH(x||"",xlRenkli(x,XL_TOPLAM));
+    if(kutu) return xlH(x.v||"",xlRenkli(x.renk,Object.assign({},XL_TOPLAM,{z:o.z})));
+    if(o.hata && x) o.yazi="B42318";
+    return xlH(x||"",o);
+  }));
   rows.push([]);
-  rows.push([h("Fabrika Genel KPI",{kenarsiz:1,sz:11,kalin:1})]);
-  gunlukKpi(t).forEach(x=>{
+  rows.push([xlH("Fabrika Genel KPI",{kenarsiz:1,sz:11,kalin:1})]);
+  kpiler.forEach(x=>{
     const r=rows.length, k=XL_RENK[x.renk];
-    rows.push([h(x.ad,{kenarsiz:1,yazi:"5B6670"}),null,null,
-      h(x.n,Object.assign({kenarsiz:1,kalin:1,yatay:"right",z:x.z},k?{zemin:k[0],yazi:k[1]}:{}))]);
+    rows.push([xlH(x.ad,{kenarsiz:1,yazi:"5B6670"}),null,null,
+      xlH(x.n,Object.assign({kenarsiz:1,kalin:1,yatay:"right",z:x.z},k?{zemin:k[0],yazi:k[1]}:{}))]);
     merges.push({s:{r:r,c:0},e:{r:r,c:2}});
   });
   rows.push([]);
   verimLejant().forEach(([k,ad],i)=>{
     const r=rows.length;
-    rows.push([h(i?"":"Renkler",{kenarsiz:1,yazi:"5B6670"}),null,null,
-      h(ad,{kenarsiz:1,kalin:1,yatay:"center",zemin:XL_RENK[k][0],yazi:XL_RENK[k][1]})]);
+    rows.push([xlH(i?"":"Renkler",{kenarsiz:1,yazi:"5B6670"}),null,null,
+      xlH(ad,{kenarsiz:1,kalin:1,yatay:"center",zemin:XL_RENK[k][0],yazi:XL_RENK[k][1]})]);
     merges.push({s:{r:r,c:0},e:{r:r,c:2}});
   });
   const ws=XLSX.utils.aoa_to_sheet(rows);
@@ -4101,14 +4339,94 @@ function verimSayfa(t,date){
   ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:bas,c:0},e:{r:filtreSon,c:son}})};
   return ws;
 }
-async function verimExcel(){
+const XL_SAYI={yatay:"right",z:"#,##0"};
+function verimSayfa(t,date){
+  const filtre=gunlukFiltre();
+  return xlVerimSayfa("Günlük Üretim Performans Raporu",
+    "Novotech Üretim · "+trDate(date)+" "+gunAdi(date)+(filtre?" · "+filtre:""),[
+    ["İş Emri",12,s=>s.o.ie||"",{kalin:1}],
+    ["Stok Kodu",12,s=>s.o.kod||""],
+    ["Ürün",28,s=>s.o.urun||"",{sar:1}],
+    ["Makine",20,s=>machineLabel(s.o.makine),{sar:1}],
+    ["Toplam Göz",8,s=>s.o.kgoz==null?"":n0(s.o.kgoz),{yatay:"right"}],
+    ["Kapalı Göz",8,s=>s.o.cgoz==null?"":s.c.kapaliGoz||"",{yatay:"right"}],
+    ["Aktif Göz",8,s=>s.o.cgoz==null?"":n0(s.o.cgoz),{yatay:"right"}],
+    ["Teorik Çevrim (sn)",10,s=>s.o.cevrim==null?"":n0(s.o.cevrim),{yatay:"right",z:"0.00"}],
+    ["Gerçek Çevrim (sn)",10,s=>s.o.gcevrim==null?"":n0(s.o.gcevrim),{yatay:"right",z:"0.00"}],
+    ["Günlük Teorik Üretim",12,s=>s.v&&s.c.R?Math.round(s.c.R):"",XL_SAYI],
+    ["Günlük Üretim",12,s=>s.v||"",XL_SAYI],
+    ["Hatalı (adet)",9,s=>s.hat||"",{yatay:"right",z:"#,##0",hata:1}],
+    ["Günlük Verim",10,s=>s.verim||"",{verim:1}],
+    ["Çevrim Performansı",12,s=>s.perf||"",{verim:1}],
+    ["Plan Gerçekleşme",12,s=>n0(s.o.plan)?s.c.pct:"",{yatay:"right",z:"0.0%"}],
+    ["Duruş (saat)",9,s=>s.dur||"",{yatay:"right"}],
+    ["Duruş Sebebi",16,s=>gunlukSebep(s,date)],
+    ["Duruş Notu",32,s=>durBilgi(s.o,date).n||"",{sar:1}]
+  ],t.satir,{0:"Toplam",9:t.teorik?Math.round(t.teorik):"",10:t.uretim,11:t.hata,
+    12:t.verim,13:t.perf,15:t.durus},gunlukKpi(t));
+}
+function isEmriSayfa(t){
+  const filtre=isEmriFiltre();
+  return xlVerimSayfa("Aylık İş Emri Performans Raporu",
+    "Novotech Üretim · "+monthLabel(monthKey)+(filtre?" · "+filtre:"")+
+    " · Verim ve duruş yalnız bu ayın girişlerinden, plan gerçekleşmesi iş emrinin tamamından",[
+    ["İş Emri",12,s=>s.o.ie||"",{kalin:1}],
+    ["Stok Kodu",12,s=>s.o.kod||""],
+    ["Ürün",28,s=>s.o.urun||"",{sar:1}],
+    ["Makine",20,s=>s.o.makine?machineLabel(s.o.makine):"",{sar:1}],
+    ["Durum",13,s=>s.durum],
+    ["Planlanan",11,s=>n0(s.o.plan)||"",XL_SAYI],
+    ["Toplam Üretilen",12,s=>s.c.J||"",XL_SAYI],
+    ["Kalan",11,s=>n0(s.o.plan)?s.c.kalan:"",XL_SAYI],
+    ["Plan Gerçekleşme",12,s=>n0(s.o.plan)?s.c.pct:"",{yatay:"right",z:"0.0%"}],
+    ["Aylık Üretim",12,s=>s.v||"",XL_SAYI],
+    ["Aylık Teorik Üretim",12,s=>s.teorik?Math.round(s.teorik):"",XL_SAYI],
+    ["Aylık Verim",10,s=>s.verim||"",{verim:1}],
+    ["Çevrim Performansı",12,s=>s.perf||"",{verim:1}],
+    ["Üretim Günü",9,s=>s.gunSay||"",{yatay:"right"}],
+    ["Duruş (saat)",9,s=>s.dur||"",{yatay:"right",z:"0.0"}],
+    ["Hatalı (adet)",9,s=>s.hat||"",{yatay:"right",z:"#,##0",hata:1}],
+    ["Tahmini Bitiş",12,s=>s.bitis?trDate(s.bitis):"",{yatay:"center"}]
+  ],t.satir,{0:"Toplam",5:t.plan,6:t.J,7:t.plan?t.kalan:"",8:t.plan?t.pct:"",9:t.uretim,
+    10:t.teorik?Math.round(t.teorik):"",11:t.verim,12:t.perf,14:t.durus,15:t.hata},isEmriKpi(t));
+}
+/* Haftalık sayfada her gün iki sütun: adet (o günün verimiyle boyanır) ve verim. */
+function haftaSayfa(t){
+  const G=t.gunler, kol=[
+    ["Makine",20,s=>s.o.makine?machineLabel(s.o.makine):"",{sar:1}],
+    ["İş Emri",12,s=>s.o.ie||"",{kalin:1}],
+    ["Stok Kodu",12,s=>s.o.kod||""],
+    ["Ürün",28,s=>s.o.urun||"",{sar:1}]
+  ], toplam={0:"Toplam"};
+  G.forEach((g,i)=>{
+    const ad=GUN_KISA[i]+" "+trDate(g).slice(0,5), gv=s=>(s.gun[g]||{}).verim||"";
+    toplam[kol.length]={v:t.gun[g].uretim, renk:t.gun[g].verim};
+    kol.push([ad+" üretim",11,s=>(s.gun[g]||{}).v||"",Object.assign({renk:gv},XL_SAYI)]);
+    toplam[kol.length]=t.gun[g].verim;
+    kol.push([ad+" verim",9,gv,{verim:1}]);
+  });
+  const n=kol.length;
+  kol.push(["Haftalık Üretim",12,s=>s.v||"",XL_SAYI],
+    ["Haftalık Teorik Üretim",12,s=>s.teorik?Math.round(s.teorik):"",XL_SAYI],
+    ["Haftalık Verim",10,s=>s.verim||"",{verim:1}],
+    ["Çevrim Performansı",12,s=>s.perf||"",{verim:1}],
+    ["Duruş (saat)",9,s=>s.dur||"",{yatay:"right",z:"0.0"}],
+    ["Hatalı (adet)",9,s=>s.hat||"",{yatay:"right",z:"#,##0",hata:1}]);
+  Object.assign(toplam,{[n]:t.uretim,[n+1]:t.teorik?Math.round(t.teorik):"",[n+2]:t.verim,
+    [n+3]:t.perf,[n+4]:t.durus,[n+5]:t.hata});
+  return xlVerimSayfa("Haftalık Üretim Verim Tablosu",
+    "Novotech Üretim · Hafta "+haftaNo(planWS)+" · "+trDate(G[0])+" – "+trDate(G[G.length-1]),
+    kol,t.satir,toplam,haftaKpi(t));
+}
+/* yap boş tabloda null döner (uyarıyı kendisi gösterir). Ana ekrana eklenen uygulamada
+   dosya paylaşım ekranıyla verilir. */
+async function verimExcel(ad,sekme,yap){
   if(!xlsxAvailable()){ toast("Bu ekranda dosya indirilemiyor, “Excel'e kopyala” kullan"); return; }
-  const date=$("#dDate").value, t=gunlukOzet(dailyRows(),date);
-  if(!t.satir.length){ toast("Bu güne girilmiş kayıt yok"); return; }
   try{
+    const ws=yap(); if(!ws) return;
     const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,verimSayfa(t,date),"Günlük Verim");
-    const ad="Novotech Günlük Verim "+trDate(date).replace(/\./g,"-")+".xlsx";
+    XLSX.utils.book_append_sheet(wb,ws,sekme);
+    ad="Novotech "+ad+".xlsx";
     if(pwaModu()){
       const dosya=new File([XLSX.write(wb,{bookType:"xlsx",type:"array"})],ad,
         {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
@@ -4118,7 +4436,28 @@ async function verimExcel(){
     toast("Excel dosyası indirildi");
   }catch(e){ toast("Excel dosyası oluşturulamadı"); }
 }
-$("#dXlsx").addEventListener("click",verimExcel);
+$("#dXlsx").addEventListener("click",()=>{
+  const date=$("#dDate").value;
+  verimExcel("Günlük Verim "+trDate(date).replace(/\./g,"-"),"Günlük Verim",()=>{
+    const t=gunlukOzet(dailyRows(),date);
+    if(!t.satir.length){ toast("Bu güne girilmiş kayıt yok"); return null; }
+    return verimSayfa(t,date);
+  });
+});
+$("#oXlsx").addEventListener("click",()=>{
+  verimExcel("İş Emri Verim "+monthLabel(monthKey),"İş Emri Verim",()=>{
+    renderOrders();
+    if(!gridRows.length){ toast("Bu ayda iş emri yok"); return null; }
+    return isEmriSayfa(isEmriOzet());
+  });
+});
+$("#plXlsx").addEventListener("click",()=>{
+  verimExcel("Haftalık Verim "+trDate(planWS).replace(/\./g,"-"),"Haftalık Verim",()=>{
+    const t=haftaOzet();
+    if(!t.satir.length){ toast("Bu haftaya girilmiş kayıt yok"); return null; }
+    return haftaSayfa(t);
+  });
+});
 function backupJSON(){
   return JSON.stringify({
     orders:S.orders.map(o=>{const c=Object.assign({},o); delete c._id; return c;}),
@@ -4290,13 +4629,13 @@ fillMachineSelects();
 $("#dDate").value = SEED.bitis;
 $("#dDate").min = "2020-01-01";
 const _fr=fullRange(); $("#sFrom").value=_fr.from; $("#sTo").value=_fr.to;
-$("#buildTag").textContent="· sürüm "+BUILD+" · 11 Ekim 2026";
+$("#buildTag").textContent="· sürüm "+BUILD+" · 12 Ekim 2026";
 /* Excel kitaplığı yalnızca dosya indirmenin çalıştığı ortamda ve yalnızca bir kez yüklenir.
    xlsx-js-style, SheetJS 0.18.5'in hücre rengi yazabilen kopyası; arayüzü aynı. */
 if(!window.claude){
   const _sc=document.createElement("script");
   _sc.src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js";
-  _sc.onload=function(){ $("#btnXlsx").hidden=false; $("#dXlsx").hidden=false; };
+  _sc.onload=function(){ ["#btnXlsx","#dXlsx","#oXlsx","#plXlsx"].forEach(k=>{ $(k).hidden=false; }); };
   document.head.appendChild(_sc);
 }
 /* Tema seçimi bu tarayıcıda saklanır; seçilmediyse işletim sisteminin tercihi geçerli. */
