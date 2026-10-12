@@ -2290,9 +2290,8 @@ function gunlukOzet(list,date){
   t.perf=t.perfN?t.perfTop/t.perfN:0;
   return t;
 }
-/* KPI kartları: ekranda, PDF'te ve Excel'de aynı ad ve değerle. z, Excel'deki sayı biçimi. */
 /* KPI kartları: ekranda, PDF'te ve Excel'de aynı ad ve değerle. z, Excel'deki sayı biçimi.
-   D dönemi adlandırır: aylık ve haftalık tablo da aynı kartları kendi adıyla kullanır. */
+   D dönemi adlandırır: iş emri ve haftalık tablo da aynı kartları kendi adıyla kullanır. */
 const GUN_D={ad:"Günlük", ek:"bu güne", teorik:"adet · kalıp göz ve teorik çevrimle 24 saat"};
 function gunlukKpi(t,D){
   D=D||GUN_D;
@@ -3772,10 +3771,10 @@ function buildPrintDaily(){
   tb.appendChild(top);
   kok.appendChild(tablo); vrLejant(kok); area.appendChild(kok);
 }
-/* Aylık iş emri verim tablosu: İş Emirleri sekmesinde süzülen iş emirleri, ekrandaki sırayla.
-   Verim sütunları yalnız seçili ayın girişlerinden; plan gerçekleşmesi, durum ve tahmini
-   bitiş iş emrinin bütününden (ekrandaki tabloyla aynı) okunur. */
-const AY_D={ad:"Aylık", ek:"bu aya", teorik:"adet · üretim girilen günlerde 24 saat"};
+/* İş emri verim tablosu: İş Emirleri sekmesinde o ay açık ve süzülen iş emirleri, ekrandaki
+   sırayla. Her değer iş emrinin bütün girişlerinden okunur; ay sınırı yalnız listeyi seçer,
+   yoksa aya taşan iş emrinin üretimi ve verimi yarım kalır. */
+const IE_D={ad:"Toplam", ek:"iş emirlerine", teorik:"adet · üretim girilen günlerde 24 saat"};
 const HAFTA_D={ad:"Haftalık", ek:"bu haftaya", teorik:"adet · üretim girilen günlerde 24 saat"};
 const DURUM_SINIF={"Tamamlandı":"tamam","Devam ediyor":"devam","Başlamadı":"bos"};
 function isEmriFiltre(){
@@ -3786,7 +3785,14 @@ function isEmriFiltre(){
   return f.join(" · ");
 }
 function isEmriOzet(){
-  const t=donemOzet(gridRows,daysOfMonth(monthKey));
+  const g=new Set();
+  gridRows.forEach(o=>[o.days,o.dur,o.hat].forEach(x=>Object.keys(x||{}).forEach(k=>g.add(k))));
+  const t=donemOzet(gridRows,[...g].sort());
+  /* Eski kayıtlarda güne bağlanmamış toplu duruş ve hatalı da iş emrinin toplamına girer. */
+  t.satir.forEach(s=>{
+    const dur=durGunsuz(s.o), hat=hatGunsuz(s.o);
+    s.dur+=dur; s.hat+=hat; t.durus+=dur; t.hata+=hat;
+  });
   t.durum={"Tamamlandı":0,"Devam ediyor":0,"Başlamadı":0};
   t.plan=0; t.planUretim=0; t.J=0; t.kalan=0;
   t.satir.forEach(s=>{
@@ -3805,7 +3811,7 @@ function isEmriKpi(t){
     {ad:"İş emri", deger:fmt(t.satir.length), n:t.satir.length, z:"#,##0",
       alt:fmt(D["Tamamlandı"])+" tamamlandı · "+fmt(D["Devam ediyor"])+" devam · "+fmt(D["Başlamadı"])+" başlamadı"},
     {ad:"Plan gerçekleşme", deger:t.plan?pctS(t.pct):"—", alt:"toplam üretilen / planlanan", n:t.plan?t.pct:"", z:"0.0%"}
-  ].concat(gunlukKpi(t,AY_D).filter(x=>x.k!=="saat"));
+  ].concat(gunlukKpi(t,IE_D).filter(x=>x.k!=="saat"));
 }
 function vrBar(x){
   const d=el("td","vr-bar");
@@ -3818,10 +3824,10 @@ function vrBar(x){
 function buildPrintIsEmri(){
   const area=$("#printArea"); area.innerHTML="";
   const t=isEmriOzet();
-  const kok=vrKok("Aylık İş Emri Performans Raporu",isEmriFiltre(),monthLabel(monthKey),"aylık üretim ve verim",isEmriKpi(t));
+  const kok=vrKok("İş Emri Performans Raporu",isEmriFiltre(),monthLabel(monthKey),"o ay açık iş emirleri",isEmriKpi(t));
   const {tablo,tb}=vrTablo([["İş Emri",66],["Ürün",134],["Makine",90],["Durum",70],
-    ["Planlanan",56,"r"],["Toplam Üretilen",60,"r"],["Plan Gerçekleşme",90],
-    ["Aylık Üretim",58,"r"],["Aylık Teorik Üretim",64,"r"],["Aylık Verim",58,"vr-p"],
+    ["Planlanan",56,"r"],["Toplam Üretilen",60,"r"],["Kalan",56,"r"],["Plan Gerçekleşme",90],
+    ["Teorik Üretim",64,"r"],["Verim",58,"vr-p"],
     ["Çevrim Performansı",62,"vr-p"],["Üretim Günü",44,"r"],["Duruş (saat)",46,"r"],
     ["Hatalı (adet)",48,"r"],["Tahmini Bitiş",58,"r"]]);
   t.satir.forEach(s=>{
@@ -3832,8 +3838,8 @@ function buildPrintIsEmri(){
     d.appendChild(el("span","vr-dr "+DURUM_SINIF[s.durum],s.durum)); tr.appendChild(d);
     tr.appendChild(vrSayi(n0(o.plan),fmt));
     tr.appendChild(vrSayi(c.J,fmt));
+    tr.appendChild(vrSayi(n0(o.plan)?c.kalan:0,fmt));
     tr.appendChild(vrBar(n0(o.plan)?c.pct:0));
-    tr.appendChild(vrSayi(s.v,fmt));
     tr.appendChild(vrSayi(s.teorik,x=>fmt(Math.round(x))));
     tr.appendChild(vrYuzde(s.verim));
     tr.appendChild(vrYuzde(s.perf));
@@ -3846,8 +3852,8 @@ function buildPrintIsEmri(){
   const top=el("tr","vr-top"), ad=el("td",null,"Toplam · "+fmt(t.satir.length)+" iş emri"); ad.colSpan=4; top.appendChild(ad);
   top.appendChild(vrSayi(t.plan,fmt));
   top.appendChild(vrSayi(t.J,fmt));
+  top.appendChild(vrSayi(t.plan?t.kalan:0,fmt));
   top.appendChild(vrBar(t.pct));
-  top.appendChild(vrSayi(t.uretim,fmt));
   top.appendChild(vrSayi(t.teorik,x=>fmt(Math.round(x))));
   top.appendChild(vrYuzde(t.verim));
   top.appendChild(vrYuzde(t.perf));
@@ -3857,7 +3863,7 @@ function buildPrintIsEmri(){
   top.appendChild(el("td"));
   tb.appendChild(top);
   kok.appendChild(tablo);
-  vrLejant(kok,"Verim ve duruş yalnız "+monthLabel(monthKey)+" girişlerinden; plan gerçekleşmesi iş emrinin tamamından.");
+  vrLejant(kok,"Bütün değerler iş emrinin başından bugüne girişlerinden hesaplanır.");
   area.appendChild(kok);
 }
 /* Haftalık verim tablosu: Pazartesi–Cumartesi, Pazar'a giriş yapılmışsa o da. Satır, o hafta
@@ -4433,9 +4439,9 @@ function verimSayfa(t,date){
 }
 function isEmriSayfa(t){
   const filtre=isEmriFiltre();
-  return xlVerimSayfa("Aylık İş Emri Performans Raporu",
-    "Novotech Üretim · "+monthLabel(monthKey)+(filtre?" · "+filtre:"")+
-    " · Verim ve duruş yalnız bu ayın girişlerinden, plan gerçekleşmesi iş emrinin tamamından",[
+  return xlVerimSayfa("İş Emri Performans Raporu",
+    "Novotech Üretim · "+monthLabel(monthKey)+" · o ay açık iş emirleri"+(filtre?" · "+filtre:"")+
+    " · Bütün değerler iş emrinin başından bugüne girişlerinden hesaplanır",[
     ["İş Emri",12,s=>s.o.ie||"",{kalin:1}],
     ["Stok Kodu",12,s=>s.o.kod||""],
     ["Ürün",28,s=>s.o.urun||"",{sar:1}],
@@ -4445,16 +4451,15 @@ function isEmriSayfa(t){
     ["Toplam Üretilen",12,s=>s.c.J||"",XL_SAYI],
     ["Kalan",11,s=>n0(s.o.plan)?s.c.kalan:"",XL_SAYI],
     ["Plan Gerçekleşme",12,s=>n0(s.o.plan)?s.c.pct:"",{yatay:"right",z:"0.0%"}],
-    ["Aylık Üretim",12,s=>s.v||"",XL_SAYI],
-    ["Aylık Teorik Üretim",12,s=>s.teorik?Math.round(s.teorik):"",XL_SAYI],
-    ["Aylık Verim",10,s=>s.verim||"",{verim:1}],
+    ["Teorik Üretim",12,s=>s.teorik?Math.round(s.teorik):"",XL_SAYI],
+    ["Verim",10,s=>s.verim||"",{verim:1}],
     ["Çevrim Performansı",12,s=>s.perf||"",{verim:1}],
     ["Üretim Günü",9,s=>s.gunSay||"",{yatay:"right"}],
     ["Duruş (saat)",9,s=>s.dur||"",{yatay:"right",z:"0.0"}],
     ["Hatalı (adet)",9,s=>s.hat||"",{yatay:"right",z:"#,##0",hata:1}],
     ["Tahmini Bitiş",12,s=>s.bitis?trDate(s.bitis):"",{yatay:"center"}]
-  ],t.satir,{0:"Toplam",5:t.plan,6:t.J,7:t.plan?t.kalan:"",8:t.plan?t.pct:"",9:t.uretim,
-    10:t.teorik?Math.round(t.teorik):"",11:t.verim,12:t.perf,14:t.durus,15:t.hata},isEmriKpi(t));
+  ],t.satir,{0:"Toplam",5:t.plan,6:t.J,7:t.plan?t.kalan:"",8:t.plan?t.pct:"",
+    9:t.teorik?Math.round(t.teorik):"",10:t.verim,11:t.perf,13:t.durus,14:t.hata},isEmriKpi(t));
 }
 /* Haftalık sayfada her gün iki sütun: adet (o günün verimiyle boyanır) ve verim. */
 function haftaSayfa(t){
