@@ -901,7 +901,12 @@ function dISO(d){ return d.toISOString().slice(0,10); }
 function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); }
 function addDays(iso,k){ const d=parseISO(iso); d.setUTCDate(d.getUTCDate()+k); return dISO(d); }
 /* Pazar günü üretim yok; tahmini bitiş hesabında pazarlar sayılmaz. */
-function addWorkDays(iso,k){ let d=iso, n=Math.max(0,k); while(n>0){ d=addDays(d,1); if(parseISO(d).getUTCDay()!==0) n--; } return d; }
+/* Any 7 consecutive days hold exactly 6 work days, so whole weeks are skipped in one step:
+   a mistyped cycle time can push the estimate tens of thousands of days out. */
+function addWorkDays(iso,k){
+  let d=iso, n=Math.max(0,k);
+  if(n>6){ const h=Math.floor((n-1)/6); d=addDays(d,7*h); n-=6*h; }
+  while(n>0){ d=addDays(d,1); if(parseISO(d).getUTCDay()!==0) n--; } return d; }
 /* İki tarih arasındaki iş günü sayısı (pazarlar hariç, iki uç dâhil). */
 function isGunSayisi(a,b){
   const d1=parseISO(a), d2=parseISO(b);
