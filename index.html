@@ -12,5 +12,17 @@
 </head>
 <body>
 <h1>Sistem kapatılmıştır.</h1>
+<script>
+/* The browser keeps this page cached for ~10 min after the site reopens. Check the live
+   page bypassing the cache; once it is no longer this one, reload into the real app. */
+function kontrol(){
+  fetch(location.href,{cache:"reload"}).then(function(r){return r.text();}).then(function(t){
+    if(t.indexOf("Sistem kapatılmıştır.")<0) location.reload();
+  }).catch(function(){});
+}
+kontrol();
+setInterval(kontrol,30000);
+document.addEventListener("visibilitychange",function(){ if(!document.hidden) kontrol(); });
+</script>
 </body>
 </html>
