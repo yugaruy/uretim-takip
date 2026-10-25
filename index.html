@@ -689,7 +689,7 @@ body.pdfyap #printArea{display:block;position:absolute;left:-20000px;top:0;width
         <th>İş Emri</th><th>Ürün</th><th>Makine</th>
         <th class="r">Toplam Göz</th><th class="r">Kapalı Göz</th><th class="r">Aktif Göz</th>
         <th class="r">Teorik Çevrim (sn)</th><th class="r">Gerçek Çevrim (sn)</th>
-        <th class="r">Günlük Teorik Üretim</th><th class="r">Günlük Üretim</th>
+        <th class="r">Günlük Teorik Üretim</th><th class="r">Gerçek Çevrimle Teorik Üretim</th><th class="r">Günlük Üretim</th>
         <th class="r">Hatalı (adet)</th>
         <th class="r">Günlük Verim</th><th class="r">Çevrim Performansı</th><th class="r">Plan Gerçekleşme</th>
         <th class="r">Duruş (saat)</th><th>Duruş Sebebi</th><th>Duruş Notu</th>
@@ -2279,12 +2279,12 @@ function verimLejant(){
   return [["iyi","%"+E[0]+" ve üstü"],["orta","%"+E[1]+" – %"+E[0]],["dusuk","%"+E[1]+" altı"]];
 }
 function gunlukOzet(list,date){
-  const t={satir:[],teorik:0,uretim:0,verimPay:0,saat:0,perfTop:0,perfN:0,durus:0,hata:0};
+  const t={satir:[],teorik:0,teorikG:0,uretim:0,verimPay:0,saat:0,perfTop:0,perfN:0,durus:0,hata:0};
   list.forEach(o=>{
     const c=calc(o), v=n0(o.days[date]), dur=n0(durOf(o,date)), hat=n0(hatOf(o,date));
     if(v){
       t.uretim+=v;
-      if(c.Q) t.saat+=v/c.Q;
+      if(c.Q){ t.saat+=v/c.Q; t.teorikG+=c.S; }
       if(c.R){ t.teorik+=c.R; t.verimPay+=v; }
       if(c.cevrimPerf){ t.perfTop+=c.cevrimPerf; t.perfN++; }
     }
@@ -2354,7 +2354,7 @@ function renderDaily(){
   const list=dailyRows();
   $("#dCount").textContent = fmt(list.length)+" iş emri listeleniyor";
   const tb=$("#dBody"); tb.innerHTML="";
-  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=17; tr.appendChild(c); tb.appendChild(tr); }
+  if(!list.length){ const tr=el("tr"); const c=el("td","empty","Bu tarihe yakın hareketi olan iş emri yok. “Tüm iş emirlerini göster” ile hepsini listeleyebilirsin."); c.colSpan=18; tr.appendChild(c); tb.appendChild(tr); }
   const frag=document.createDocumentFragment();
   list.forEach(o=>{
     const c=calc(o), v=n0(o.days[date]);
@@ -2407,6 +2407,7 @@ function renderDaily(){
     });
     gcTd.appendChild(gcinp); tr.appendChild(gcTd);
     tr.appendChild(td(gunlukTeorik?fmt(Math.round(gunlukTeorik)):"—","r mono"));
+    tr.appendChild(td(c.S?fmt(Math.round(c.S)):"—","r mono"));
     const inTd=el("td","r");
     const inp=el("input"); inp.type="text"; inp.className="mono"; inp.style.width="130px"; inp.style.textAlign="right";
     inp.value = dayExp(o,date) || (o.days[date]!=null ? o.days[date] : "");
@@ -3740,10 +3741,10 @@ function buildPrintDaily(){
   const area=$("#printArea"); area.innerHTML="";
   const date=$("#dDate").value, t=gunlukOzet(dailyRows(),date);
   const kok=vrKok("Günlük Üretim Performans Raporu",gunlukFiltre(),trDate(date),gunAdi(date),gunlukKpi(t));
-  const {tablo,tb}=vrTablo([["İş Emri",74],["Ürün",150],["Makine",92],["Aktif / Toplam Göz",50,"r"],
+  const {tablo,tb}=vrTablo([["İş Emri",74],["Ürün",138],["Makine",92],["Aktif / Toplam Göz",50,"r"],
     ["Teorik Çevrim (sn)",54,"r"],["Gerçek Çevrim (sn)",54,"r"],["Günlük Teorik Üretim",70,"r"],
-    ["Günlük Üretim",70,"r"],["Hatalı (adet)",52,"r"],["Günlük Verim",70,"vr-p"],
-    ["Çevrim Performansı",70,"vr-p"],["Plan Gerçekleşme",68,"r"],["Duruş",188]]);
+    ["Gerçek Çevrimle Teorik Üretim",70,"r"],["Günlük Üretim",70,"r"],["Hatalı (adet)",52,"r"],["Günlük Verim",70,"vr-p"],
+    ["Çevrim Performansı",70,"vr-p"],["Plan Gerçekleşme",68,"r"],["Duruş",130]]);
   t.satir.forEach(s=>{
     const o=s.o, c=s.c, b=durBilgi(o,date), tr=el("tr");
     tr.appendChild(el("td","vr-ie",o.ie||"—"));
@@ -3753,6 +3754,7 @@ function buildPrintDaily(){
     tr.appendChild(el("td","r",o.cevrim==null?"—":fmt2(o.cevrim)));
     tr.appendChild(el("td","r",o.gcevrim==null?"—":fmt2(o.gcevrim)));
     tr.appendChild(vrSayi(s.v&&c.R,x=>fmt(Math.round(x))));
+    tr.appendChild(vrSayi(s.v&&c.S,x=>fmt(Math.round(x))));
     tr.appendChild(vrSayi(s.v,fmt));
     tr.appendChild(vrHata(s.hat));
     tr.appendChild(vrYuzde(s.verim));
@@ -3767,6 +3769,7 @@ function buildPrintDaily(){
   });
   const top=el("tr","vr-top"), ad=el("td",null,"Toplam"); ad.colSpan=6; top.appendChild(ad);
   top.appendChild(vrSayi(t.teorik,x=>fmt(Math.round(x))));
+  top.appendChild(vrSayi(t.teorikG,x=>fmt(Math.round(x))));
   top.appendChild(vrSayi(t.uretim,fmt));
   top.appendChild(vrHata(t.hata));
   top.appendChild(vrYuzde(t.verim));
@@ -4068,6 +4071,22 @@ async function paylas(dosya){
   try{ await navigator.share({files:[dosya],title:dosya.name}); return true; }
   catch(e){ return !!(e && e.name==="AbortError"); }
 }
+/* PDF birkaç saniyede çizilir; o arada tarayıcı düğmeye basılmış saymayı bırakır ve paylaşım
+   ekranını sessizce reddeder. Bu yüzden dosya hazır olunca yeni bir dokunuş istenir. */
+function pdfHazir(doc,adi){
+  const dosya=new File([doc.output("blob")],adi,{type:"application/pdf"});
+  openPanel("pdf",d=>{
+    d.appendChild(el("h3",null,"PDF hazır"));
+    d.appendChild(el("p","hint",adi));
+    const row=el("div","row"), ok=el("button","btn primary","Kaydet / Paylaş"), cl=el("button","btn","Kapat");
+    ok.addEventListener("click",async()=>{
+      if(!(await paylas(dosya))) doc.save(adi);
+      closePanel();
+    });
+    cl.addEventListener("click",closePanel);
+    row.appendChild(ok); row.appendChild(cl); d.appendChild(row);
+  });
+}
 async function pdfCikti(){
   if(!ciktiHazirla()) return;
   toast("PDF hazırlanıyor…");
@@ -4108,9 +4127,7 @@ async function pdfCikti(){
       doc.addImage(par.toDataURL("image/jpeg",0.92),"JPEG",KENAR,KENAR,sayfaEn,(h/olcek)*mm);
       ilk=false; y=kes;
     }
-    const adi=pdfAdi();
-    if(await paylas(new File([doc.output("blob")],adi,{type:"application/pdf"}))) return;
-    doc.save(adi);
+    pdfHazir(doc,pdfAdi());
   }catch(e){ toast("PDF oluşturulamadı"); }
   finally{
     document.body.classList.remove("pdfyap"); alan.innerHTML="";
@@ -4431,6 +4448,7 @@ function verimSayfa(t,date){
     ["Teorik Çevrim (sn)",10,s=>s.o.cevrim==null?"":n0(s.o.cevrim),{yatay:"right",z:"0.00"}],
     ["Gerçek Çevrim (sn)",10,s=>s.o.gcevrim==null?"":n0(s.o.gcevrim),{yatay:"right",z:"0.00"}],
     ["Günlük Teorik Üretim",12,s=>s.v&&s.c.R?Math.round(s.c.R):"",XL_SAYI],
+    ["Gerçek Çevrimle Teorik Üretim",12,s=>s.v&&s.c.S?Math.round(s.c.S):"",XL_SAYI],
     ["Günlük Üretim",12,s=>s.v||"",XL_SAYI],
     ["Hatalı (adet)",9,s=>s.hat||"",{yatay:"right",z:"#,##0",hata:1}],
     ["Günlük Verim",10,s=>s.verim||"",{verim:1}],
@@ -4439,8 +4457,8 @@ function verimSayfa(t,date){
     ["Duruş (saat)",9,s=>s.dur||"",{yatay:"right"}],
     ["Duruş Sebebi",16,s=>gunlukSebep(s,date)],
     ["Duruş Notu",32,s=>durBilgi(s.o,date).n||"",{sar:1}]
-  ],t.satir,{0:"Toplam",9:t.teorik?Math.round(t.teorik):"",10:t.uretim,11:t.hata,
-    12:t.verim,13:t.perf,15:t.durus},gunlukKpi(t));
+  ],t.satir,{0:"Toplam",9:t.teorik?Math.round(t.teorik):"",10:t.teorikG?Math.round(t.teorikG):"",11:t.uretim,12:t.hata,
+    13:t.verim,14:t.perf,16:t.durus},gunlukKpi(t));
 }
 function isEmriSayfa(t){
   const filtre=isEmriFiltre();
